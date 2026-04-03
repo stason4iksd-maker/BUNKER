@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>SSL // MARKDOWN + GIST (AUTO)</title>
+    <title>SSL // SERVER</title>
     <style>
         * {
             margin: 0;
@@ -298,9 +298,22 @@
             display: flex;
             gap: 1rem;
             font-size: 0.8rem;
+            justify-content: space-between;
         }
         .editor-toolbar span {
             color: #8eff8e;
+        }
+        .save-btn {
+            background: #0a2a0a;
+            border: 1px solid #3eff7e;
+            color: #3eff7e;
+            font-family: monospace;
+            padding: 2px 8px;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+        .save-btn:hover {
+            background: #1a4a1a;
         }
     </style>
 </head>
@@ -318,7 +331,7 @@
     <div class="crt-convex" id="crtConvex">
         <div class="terminal">
             <div class="version-scroll">
-                <div class="system-version">SSL // MARKDOWN + GIST (AUTO)</div>
+                <div class="system-version">SSL // SERVER</div>
             </div>
 
             <div id="dosScreen" class="dos-screen">
@@ -332,7 +345,10 @@
             <div id="mdEditor">
                 <div class="editor-toolbar">
                     <span>📝 EDITOR: <span id="mdFileName">untitled.md</span></span>
-                    <span>💾 CTRL+S | 🔚 ESC</span>
+                    <div>
+                        <button class="save-btn" id="saveBtn">💾 SAVE</button>
+                        <span style="margin-left: 8px;">🔚 ESC</span>
+                    </div>
                 </div>
                 <textarea id="mdInput" placeholder="Write Markdown here..."></textarea>
                 <div id="mdPreview"></div>
@@ -553,15 +569,11 @@
 
         function initHistory() {
             addHistoryLine('╔══════════════════════════════════════════════════════════╗');
-            addHistoryLine('║              SSL // MARKDOWN + GIST (AUTO)               ║');
+            addHistoryLine('║                   SSL // SERVER                          ║');
             addHistoryLine('║         ROBCO INDUSTRIES (TM) TERMINAL v.INF             ║');
             addHistoryLine('╚══════════════════════════════════════════════════════════╝');
             addHistoryLine('');
             addHistoryLine(`Enter today's date (m-d-y): ${getCurrentDate()}`);
-            addHistoryLine('');
-            addHistoryLine('Cloud storage ready. Use DIR to list files.');
-            addHistoryLine('Commands: DIR, MD new/edit/view/list, LS, CAT, NEW, EDIT, RM');
-            addHistoryLine('Admin: sslDM.EXE (password 33419)');
             addHistoryLine('');
         }
 
@@ -640,7 +652,76 @@
             addHistoryLine('  send_user <ID> <msg>     - private');
             addHistoryLine('  list                     - show users');
             addHistoryLine('  kick <ID>                - kick user');
+            addHistoryLine('  LS                       - list cloud files');
+            addHistoryLine('  CAT <file>               - view cloud file');
+            addHistoryLine('  NEW <file>               - create cloud file (multiline, end with .)');
+            addHistoryLine('  EDIT <file>              - edit cloud file');
+            addHistoryLine('  RM <file>                - delete cloud file');
+            addHistoryLine('  DATE                     - show system date');
+            addHistoryLine('  TIME                     - show system time');
             addHistoryLine('  exit                     - exit admin mode');
+        }
+
+        async function adminListGist() {
+            await loadGistFiles();
+            if (Object.keys(gistFiles).length === 0) addHistoryLine('No files in gist.');
+            else {
+                addHistoryLine('Cloud files:');
+                for (const name of Object.keys(gistFiles)) addHistoryLine(`  ${name}`);
+            }
+        }
+
+        async function adminCatGist(filename) {
+            await loadGistFiles();
+            const content = gistFiles[filename];
+            if (content === undefined) { addHistoryLine(`File "${filename}" not found.`); return; }
+            addHistoryLine(`=== ${filename} ===`);
+            content.split('\n').forEach(line => addHistoryLine(line));
+            addHistoryLine('');
+        }
+
+        async function adminNewGist(filename) {
+            if (!filename) { addHistoryLine('Usage: NEW <filename>'); return; }
+            addHistoryLine(`Enter content for ${filename} (end with a line containing only '.'):`);
+            pendingFileId = { type: 'admin_new', filename };
+            cmdInput.dataset.mode = "multiline";
+            cmdInput.value = "";
+            cmdInput.focus();
+            window._multilineCallback = async (content) => {
+                gistFiles[filename] = content;
+                await saveGistFiles(gistFiles);
+                addHistoryLine(`File ${filename} created.`);
+                pendingFileId = null;
+                delete window._multilineCallback;
+            };
+        }
+
+        async function adminEditGist(filename) {
+            if (!filename) { addHistoryLine('Usage: EDIT <filename>'); return; }
+            await loadGistFiles();
+            const oldContent = gistFiles[filename];
+            if (oldContent === undefined) { addHistoryLine(`File "${filename}" not found.`); return; }
+            addHistoryLine(`Editing ${filename}. Enter new content (end with '.'):`);
+            pendingFileId = { type: 'admin_edit', filename };
+            cmdInput.dataset.mode = "multiline";
+            cmdInput.value = "";
+            cmdInput.focus();
+            window._multilineCallback = async (content) => {
+                gistFiles[filename] = content;
+                await saveGistFiles(gistFiles);
+                addHistoryLine(`File ${filename} updated.`);
+                pendingFileId = null;
+                delete window._multilineCallback;
+            };
+        }
+
+        async function adminRmGist(filename) {
+            if (!filename) { addHistoryLine('Usage: RM <filename>'); return; }
+            await loadGistFiles();
+            if (!gistFiles[filename]) { addHistoryLine(`File not found.`); return; }
+            delete gistFiles[filename];
+            await saveGistFiles(gistFiles);
+            addHistoryLine(`File ${filename} deleted.`);
         }
 
         function processAdminCommand(cmd) {
@@ -681,79 +762,32 @@
                 addHistoryLine(`[ADMIN] Kicked user ${targetId}`, false);
                 onlineUsers.delete(targetId);
             }
-            else addHistoryLine(`Unknown admin command: ${command}.`, false);
-        }
-
-        // ================== GIST COMMANDS (LEGACY) ==================
-        async function listGistFiles() {
-            if (!gistToken || !gistId) {
-                addHistoryLine('Gist not configured.');
-                return;
+            else if (command === 'ls') {
+                adminListGist();
             }
-            await loadGistFiles();
-            if (Object.keys(gistFiles).length === 0) addHistoryLine('No files in gist.');
-            else {
-                addHistoryLine('Gist files:');
-                for (const name of Object.keys(gistFiles)) addHistoryLine(`  ${name}`);
+            else if (command === 'cat') {
+                if (parts.length < 2) addHistoryLine('Usage: CAT <filename>');
+                else adminCatGist(parts[1]);
             }
-        }
-
-        async function catGistFile(filename) {
-            if (!gistToken || !gistId) { addHistoryLine('Gist not configured.'); return; }
-            await loadGistFiles();
-            const content = gistFiles[filename];
-            if (content === undefined) { addHistoryLine(`File "${filename}" not found.`); return; }
-            addHistoryLine(`=== ${filename} ===`);
-            content.split('\n').forEach(line => addHistoryLine(line));
-            addHistoryLine('');
-        }
-
-        async function newGistFile(filename) {
-            if (!filename) { addHistoryLine('Usage: new <filename>'); return; }
-            if (!gistToken || !gistId) { addHistoryLine('Gist not configured.'); return; }
-            addHistoryLine(`Enter content for ${filename} (end with a line containing only '.'):`);
-            let lines = [];
-            pendingFileId = { type: 'gist_new', filename };
-            cmdInput.dataset.mode = "multiline";
-            cmdInput.value = "";
-            cmdInput.focus();
-            window._multilineCallback = async (content) => {
-                gistFiles[filename] = content;
-                await saveGistFiles(gistFiles);
-                addHistoryLine(`File ${filename} created.`);
-                pendingFileId = null;
-                delete window._multilineCallback;
-            };
-        }
-
-        async function editGistFile(filename) {
-            if (!filename) { addHistoryLine('Usage: edit <filename>'); return; }
-            if (!gistToken || !gistId) { addHistoryLine('Gist not configured.'); return; }
-            await loadGistFiles();
-            const oldContent = gistFiles[filename];
-            if (oldContent === undefined) { addHistoryLine(`File "${filename}" not found.`); return; }
-            addHistoryLine(`Editing ${filename}. Enter new content (end with '.'):`);
-            pendingFileId = { type: 'gist_edit', filename };
-            cmdInput.dataset.mode = "multiline";
-            cmdInput.value = "";
-            cmdInput.focus();
-            window._multilineCallback = async (content) => {
-                gistFiles[filename] = content;
-                await saveGistFiles(gistFiles);
-                addHistoryLine(`File ${filename} updated.`);
-                pendingFileId = null;
-                delete window._multilineCallback;
-            };
-        }
-
-        async function rmGistFile(filename) {
-            if (!filename) { addHistoryLine('Usage: rm <filename>'); return; }
-            if (!gistToken || !gistId) { addHistoryLine('Gist not configured.'); return; }
-            await loadGistFiles();
-            if (!gistFiles[filename]) { addHistoryLine(`File not found.`); return; }
-            delete gistFiles[filename];
-            await saveGistFiles(gistFiles);
-            addHistoryLine(`File ${filename} deleted.`);
+            else if (command === 'new') {
+                if (parts.length < 2) addHistoryLine('Usage: NEW <filename>');
+                else adminNewGist(parts[1]);
+            }
+            else if (command === 'edit') {
+                if (parts.length < 2) addHistoryLine('Usage: EDIT <filename>');
+                else adminEditGist(parts[1]);
+            }
+            else if (command === 'rm') {
+                if (parts.length < 2) addHistoryLine('Usage: RM <filename>');
+                else adminRmGist(parts[1]);
+            }
+            else if (command === 'date') {
+                addHistoryLine(`Current date is ${getCurrentDate()}`);
+            }
+            else if (command === 'time') {
+                addHistoryLine(`Current time is ${getCurrentTime()}`);
+            }
+            else addHistoryLine(`Unknown admin command: ${command}. Type 'help' for list.`, false);
         }
 
         // ================== MARKDOWN EDITOR ==================
@@ -761,6 +795,7 @@
         const mdInputArea = document.getElementById('mdInput');
         const mdPreview = document.getElementById('mdPreview');
         const mdFileNameSpan = document.getElementById('mdFileName');
+        const saveBtn = document.getElementById('saveBtn');
         let currentMDFile = null;
 
         function renderMarkdown(text) {
@@ -805,40 +840,31 @@
             }
         }
 
-        async function handleMDCommand(parts) {
-            const sub = parts[1];
-            const filename = parts[2];
-            if (!gistToken || !gistId) {
-                addHistoryLine('Gist not configured.');
+        saveBtn.addEventListener('click', () => {
+            saveMDFile();
+        });
+
+        // ================== USER COMMANDS (DIR NEW / DIR EDIT) ==================
+        async function userNewFile() {
+            addHistoryLine('Enter new filename (must end with .md):');
+            pendingFileId = { type: 'user_new_filename' };
+            cmdInput.dataset.mode = "new_filename";
+            cmdInput.value = "";
+            cmdInput.focus();
+        }
+
+        async function userEditFile(filename) {
+            if (!filename) {
+                addHistoryLine('Usage: DIR EDIT <filename.md>');
                 return;
             }
             await loadGistFiles();
-            if (sub === 'new') {
-                if (!filename || !filename.endsWith('.md')) {
-                    addHistoryLine('Usage: md new <file.md>');
-                    return;
-                }
-                openMDEditor(filename, '# New File\n\nWrite your content here.');
+            const content = gistFiles[filename];
+            if (!content) {
+                addHistoryLine(`File "${filename}" not found.`);
+                return;
             }
-            else if (sub === 'edit') {
-                if (!filename) { addHistoryLine('Usage: md edit <file.md>'); return; }
-                const content = gistFiles[filename];
-                if (!content) { addHistoryLine('File not found'); return; }
-                openMDEditor(filename, content);
-            }
-            else if (sub === 'view') {
-                if (!filename) { addHistoryLine('Usage: md view <file.md>'); return; }
-                const content = gistFiles[filename];
-                if (!content) { addHistoryLine('File not found'); return; }
-                addHistoryLine(`=== ${filename} ===`);
-                content.split('\n').forEach(l => addHistoryLine(l));
-            }
-            else if (sub === 'list') {
-                const mdFiles = Object.keys(gistFiles).filter(f => f.endsWith('.md'));
-                if (mdFiles.length === 0) addHistoryLine('No .md files.');
-                else mdFiles.forEach(f => addHistoryLine(f));
-            }
-            else addHistoryLine('md commands: new/edit/view/list');
+            openMDEditor(filename, content);
         }
 
         // ================== MAIN COMMAND PROCESSOR ==================
@@ -877,72 +903,60 @@
                     }
                     addHistoryLine('');
                 } else {
-                    const target = parts[1];
-                    if (/^\d{3}$/.test(target)) {
-                        displaySystemFile(target);
+                    const sub = parts[1].toLowerCase();
+                    if (sub === 'new') {
+                        await userNewFile();
                         return;
-                    }
-                    if (gistFiles[target] !== undefined) {
-                        const content = gistFiles[target];
-                        addHistoryLine(`=== ${target} ===`);
-                        if (target.endsWith('.md')) {
-                            content.split('\n').forEach(line => addHistoryLine(line));
+                    } else if (sub === 'edit') {
+                        if (parts.length < 3) {
+                            addHistoryLine('Usage: DIR EDIT <filename.md>');
                         } else {
-                            content.split('\n').forEach(line => addHistoryLine(line));
+                            await userEditFile(parts[2]);
                         }
-                        addHistoryLine('');
                         return;
+                    } else {
+                        // открыть файл по имени
+                        const target = parts[1];
+                        if (/^\d{3}$/.test(target)) {
+                            displaySystemFile(target);
+                            return;
+                        }
+                        if (gistFiles[target] !== undefined) {
+                            const content = gistFiles[target];
+                            addHistoryLine(`=== ${target} ===`);
+                            if (target.endsWith('.md')) {
+                                content.split('\n').forEach(line => addHistoryLine(line));
+                            } else {
+                                content.split('\n').forEach(line => addHistoryLine(line));
+                            }
+                            addHistoryLine('');
+                            return;
+                        }
+                        addHistoryLine(`File not found: ${target}`);
                     }
-                    addHistoryLine(`File not found: ${target}`);
                 }
-            }
-            else if (command === 'ls') { await listGistFiles(); }
-            else if (command === 'cat') {
-                if (parts.length < 2) addHistoryLine('Usage: cat <filename>');
-                else await catGistFile(parts[1]);
-            }
-            else if (command === 'new') {
-                if (parts.length < 2) addHistoryLine('Usage: new <filename>');
-                else await newGistFile(parts[1]);
-            }
-            else if (command === 'edit') {
-                if (parts.length < 2) addHistoryLine('Usage: edit <filename>');
-                else await editGistFile(parts[1]);
-            }
-            else if (command === 'rm') {
-                if (parts.length < 2) addHistoryLine('Usage: rm <filename>');
-                else await rmGistFile(parts[1]);
-            }
-            else if (command === 'md') {
-                await handleMDCommand(parts);
-            }
-            else if (command === 'date') {
-                addHistoryLine(`Current date is ${getCurrentDate()}`);
-                addHistoryLine('Enter new date (m-d-y):');
-            }
-            else if (command === 'time') {
-                addHistoryLine(`Current time is ${getCurrentTime()}`);
-                addHistoryLine('Enter new time:');
             }
             else if (command === 'help') {
                 addHistoryLine('Available commands:');
                 addHistoryLine('  DIR                     - list system + cloud files');
                 addHistoryLine('  DIR <ID|filename>       - open file');
-                addHistoryLine('  LS, CAT, NEW, EDIT, RM  - cloud file ops');
-                addHistoryLine('  MD new/edit/view/list   - markdown editor');
-                addHistoryLine('  DATE/TIME/CLS/VER/HELP  - standard');
-                addHistoryLine('  sslDM.EXE               - admin panel (password 33419)');
+                addHistoryLine('  DIR NEW                 - create new Markdown file');
+                addHistoryLine('  DIR EDIT <filename.md>  - edit Markdown file');
+                addHistoryLine('  CLS                     - clear screen');
+                addHistoryLine('  VER                     - show version');
+                addHistoryLine('  HELP                    - this help');
+                addHistoryLine('  sslDM.EXE               - admin panel');
             }
             else if (command === 'cls') {
                 while (historyContainer.firstChild) historyContainer.removeChild(historyContainer.firstChild);
                 addHistoryLine('╔══════════════════════════════════════════════════════════╗');
-                addHistoryLine('║              SSL // MARKDOWN + GIST (AUTO)               ║');
+                addHistoryLine('║                   SSL // SERVER                          ║');
                 addHistoryLine('║         ROBCO INDUSTRIES (TM) TERMINAL v.INF             ║');
                 addHistoryLine('╚══════════════════════════════════════════════════════════╝');
                 addHistoryLine('');
             }
             else if (command === 'ver') {
-                addHistoryLine('SSL // MARKDOWN EDITOR + GIST CLOUD');
+                addHistoryLine('SSL // SERVER');
                 addHistoryLine('GitHub Gist integration active');
             }
             else if (command === 'ssldm.exe' || command === 'ssldm') {
@@ -990,6 +1004,19 @@
                         multilineBuffer.push(value);
                         cmdInput.value = "";
                     }
+                    e.preventDefault();
+                    return;
+                }
+                else if (cmdInput.dataset.mode === "new_filename") {
+                    if (value && value.endsWith('.md')) {
+                        cmdInput.dataset.mode = "normal";
+                        addHistoryLine(`Creating new file: ${value}`);
+                        openMDEditor(value, '# New File\n\nWrite your content here.');
+                    } else {
+                        addHistoryLine('Invalid filename. Must end with .md');
+                        cmdInput.dataset.mode = "normal";
+                    }
+                    cmdInput.value = "";
                     e.preventDefault();
                     return;
                 }
