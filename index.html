@@ -357,7 +357,7 @@
     </div>
 
     <script>
-        // ================== НОВЫЙ ТОКЕН И ID ==================
+        // ================== ТОКЕН И GIST ID (НОВЫЙ ТОКЕН) ==================
         const DEFAULT_TOKEN = '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';
         const DEFAULT_GIST_ID = '03360f2ddda0253c68766cea35107a82';
 
@@ -873,12 +873,29 @@
         });
 
         // ================== USER COMMANDS (DIR NEW / DIR EDIT) ==================
-        async function userNewFile() {
-            addHistoryLine('Enter new filename (must end with .md):');
-            pendingFileId = { type: 'user_new_filename' };
-            cmdInput.dataset.mode = "new_filename";
-            cmdInput.value = "";
-            cmdInput.focus();
+        // Создание нового файла: DIR NEW [filename.md]
+        async function userCreateFile(filename) {
+            if (!filename) {
+                // запросить имя интерактивно
+                addHistoryLine('Enter new filename (must end with .md):');
+                pendingFileId = { type: 'user_new_filename' };
+                cmdInput.dataset.mode = "new_filename";
+                cmdInput.value = "";
+                cmdInput.focus();
+                return;
+            }
+            // проверка имени
+            if (!filename.endsWith('.md')) {
+                addHistoryLine('Filename must end with .md');
+                return;
+            }
+            if (filename.includes(' ')) {
+                addHistoryLine('Filename cannot contain spaces');
+                return;
+            }
+            // создаём файл и открываем редактор
+            addHistoryLine(`Creating new file: ${filename}`);
+            openMDEditor(filename, '# New File\n\nWrite your content here.');
         }
 
         async function userEditFile(filename) {
@@ -933,7 +950,9 @@
                 } else {
                     const sub = parts[1].toLowerCase();
                     if (sub === 'new') {
-                        await userNewFile();
+                        // DIR NEW [filename]
+                        const filename = parts[2] || null;
+                        await userCreateFile(filename);
                         return;
                     } else if (sub === 'edit') {
                         if (parts.length < 3) {
@@ -948,6 +967,7 @@
                             displaySystemFile(target);
                             return;
                         }
+                        await loadGistFiles();
                         if (gistFiles[target] !== undefined) {
                             const content = gistFiles[target];
                             addHistoryLine(`=== ${target} ===`);
@@ -967,7 +987,7 @@
                 addHistoryLine('Available commands:');
                 addHistoryLine('  DIR                     - list system + cloud files');
                 addHistoryLine('  DIR <ID|filename>       - open file');
-                addHistoryLine('  DIR NEW                 - create new Markdown file');
+                addHistoryLine('  DIR NEW [filename.md]   - create new Markdown file');
                 addHistoryLine('  DIR EDIT <filename.md>  - edit Markdown file');
                 addHistoryLine('  CLS                     - clear screen');
                 addHistoryLine('  VER                     - show version');
@@ -1035,12 +1055,12 @@
                     return;
                 }
                 else if (cmdInput.dataset.mode === "new_filename") {
-                    if (value && value.endsWith('.md')) {
+                    if (value && value.endsWith('.md') && !value.includes(' ')) {
                         cmdInput.dataset.mode = "normal";
                         addHistoryLine(`Creating new file: ${value}`);
                         openMDEditor(value, '# New File\n\nWrite your content here.');
                     } else {
-                        addHistoryLine('Invalid filename. Must end with .md');
+                        addHistoryLine('Invalid filename. Must end with .md and no spaces.');
                         cmdInput.dataset.mode = "normal";
                     }
                     cmdInput.value = "";
