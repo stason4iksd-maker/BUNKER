@@ -357,23 +357,26 @@
     </div>
 
     <script>
-        // ================== ПРИНУДИТЕЛЬНАЯ УСТАНОВКА ТОКЕНА И GIST ID ==================
+        // ================== НОВЫЙ ТОКЕН И ID ==================
+        const DEFAULT_TOKEN = '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';
+        const DEFAULT_GIST_ID = '03360f2ddda0253c68766cea35107a82';
+
         if (!localStorage.getItem('gist_token')) {
-            localStorage.setItem('gist_token', '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');
+            localStorage.setItem('gist_token', DEFAULT_TOKEN);
         }
         if (!localStorage.getItem('gist_id')) {
-            localStorage.setItem('gist_id', '03360f2ddda0253c68766cea35107a82');
+            localStorage.setItem('gist_id', DEFAULT_GIST_ID);
         }
+
+        let gistToken = localStorage.getItem('gist_token');
+        let gistId = localStorage.getItem('gist_id');
+        let gistFiles = {};
 
         // ================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==================
         const channel = new BroadcastChannel('ssl_admin_channel');
         const clientId = 'id_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now();
         let adminMode = false;
         let onlineUsers = new Set();
-
-        let gistToken = localStorage.getItem('gist_token');
-        let gistId = localStorage.getItem('gist_id');
-        let gistFiles = {};
 
         const systemFiles = {
             "001": { name: "INFO.txt", content: "=== SYSTEM INFORMATION ===\nSSL // ROBCO INDUSTRIES (TM)\nMILITECH MK31 DEFENDER\nACTIVE SINCE 2049-08-04\nINFINITE CORE ONLINE", protected: false, password: null },
@@ -388,7 +391,11 @@
                 const res = await fetch(`https://api.github.com/gists/${gistId}`, {
                     headers: { 'Authorization': `token ${gistToken}` }
                 });
-                if (!res.ok) throw new Error(`Gist load error: ${res.status}`);
+                if (res.status === 401) {
+                    addHistoryLine('[ERROR] GitHub token invalid or expired. Use ADMIN> GIST_TOKEN <new_token>', false);
+                    return {};
+                }
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
                 const files = {};
                 for (const [filename, fileData] of Object.entries(data.files)) {
@@ -397,7 +404,7 @@
                 gistFiles = files;
                 return files;
             } catch(e) {
-                console.warn(e);
+                addHistoryLine(`[Gist load error] ${e.message}`, false);
                 return {};
             }
         }
@@ -416,7 +423,11 @@
                 },
                 body: JSON.stringify(payload)
             });
-            if (!res.ok) throw new Error(`Save error: ${res.status}`);
+            if (res.status === 401) {
+                addHistoryLine('[ERROR] GitHub token invalid. Use ADMIN> GIST_TOKEN <new_token>', false);
+                throw new Error('Unauthorized');
+            }
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             gistFiles = files;
             return await res.json();
         }
@@ -657,8 +668,9 @@
             addHistoryLine('  NEW <file>               - create cloud file (multiline, end with .)');
             addHistoryLine('  EDIT <file>              - edit cloud file');
             addHistoryLine('  RM <file>                - delete cloud file');
-            addHistoryLine('  DATE                     - show system date');
-            addHistoryLine('  TIME                     - show system time');
+            addHistoryLine('  GIST_TOKEN <token>       - set GitHub token (gist scope)');
+            addHistoryLine('  GIST_ID <id>             - set gist ID');
+            addHistoryLine('  DATE/TIME                - show system date/time');
             addHistoryLine('  exit                     - exit admin mode');
         }
 
@@ -781,6 +793,22 @@
                 if (parts.length < 2) addHistoryLine('Usage: RM <filename>');
                 else adminRmGist(parts[1]);
             }
+            else if (command === 'gist_token') {
+                if (parts.length < 2) { addHistoryLine('Usage: GIST_TOKEN <token>'); return; }
+                const newToken = parts[1];
+                gistToken = newToken;
+                localStorage.setItem('gist_token', newToken);
+                addHistoryLine('GitHub token updated. Use GIST_ID if needed.');
+                loadGistFiles();
+            }
+            else if (command === 'gist_id') {
+                if (parts.length < 2) { addHistoryLine('Usage: GIST_ID <id>'); return; }
+                const newId = parts[1];
+                gistId = newId;
+                localStorage.setItem('gist_id', newId);
+                addHistoryLine(`Gist ID set to ${newId}. Reloading files...`);
+                loadGistFiles();
+            }
             else if (command === 'date') {
                 addHistoryLine(`Current date is ${getCurrentDate()}`);
             }
@@ -836,7 +864,7 @@
                 await saveGistFiles(gistFiles);
                 showNotification(`Saved: ${currentMDFile}`);
             } catch(e) {
-                showNotification(`Error: ${e.message}`, '#ff5555');
+                showNotification(`Save error: ${e.message}`, '#ff5555');
             }
         }
 
@@ -915,7 +943,6 @@
                         }
                         return;
                     } else {
-                        // открыть файл по имени
                         const target = parts[1];
                         if (/^\d{3}$/.test(target)) {
                             displaySystemFile(target);
