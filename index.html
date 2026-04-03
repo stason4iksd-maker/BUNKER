@@ -1,572 +1,321 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>TERMLINK PROTOCOL // FILE SYSTEM</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            cursor: url('https://i.ibb.co/WNRqtkN3/image-9.png') 0 0, auto;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SSL Terminal</title>
 
-        body {
-            background: #000;
-            width: 100vw;
-            height: 100vh;
-            overflow: hidden;
-            font-family: 'Courier New', 'Fira Code', 'VT323', monospace;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            animation: crtFlicker 0.08s infinite;
-        }
+<style>
+*{margin:0;padding:0;box-sizing:border-box;cursor:url('https://i.ibb.co/WNRqtkN3/image-9.png')0 0,auto;}
+body{background:#000;font-family:Courier New,monospace;overflow:hidden}
 
-        @keyframes crtFlicker {
-            0% { opacity: 0.97; }
-            100% { opacity: 1; }
-        }
+/* CRT */
+#crt{
+width:100vw;height:100vh;
+background:radial-gradient(circle,#030a03,#010401);
+border-radius:60px/40px;
+padding:20px;color:#00ff88;
+text-shadow:0 0 6px #00ff88;
+display:flex;flex-direction:column;
+animation:breathe 3s infinite ease-in-out;
+}
+@keyframes breathe{
+0%,100%{transform:perspective(800px)rotateX(0)rotateY(0)}
+50%{transform:perspective(800px)rotateX(1deg)rotateY(-1deg)}
+}
 
-        .crt-convex {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            background: #030a03;
-            border-radius: 60px / 40px;
-            overflow: hidden;
-            box-shadow: 
-                inset 0 0 80px rgba(0, 20, 0, 0.9),
-                0 0 0 6px #1a3a1a,
-                0 0 0 12px #0a1f0a;
-            transform: perspective(1200px) rotateX(2deg) rotateY(0.5deg);
-            transition: transform 0.1s ease;
-        }
+/* scanlines */
+#crt:after{
+content:"";position:absolute;inset:0;
+background:repeating-linear-gradient(
+to bottom,rgba(0,255,100,0.05)0px,
+rgba(0,255,100,0.05)1px,transparent 2px);
+pointer-events:none;
+}
 
-        .crt-convex::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(ellipse at center, rgba(0, 255, 0, 0.05) 0%, rgba(0, 0, 0, 0.4) 80%);
-            pointer-events: none;
-            z-index: 3;
-            border-radius: inherit;
-        }
+/* flicker */
+#crt:before{
+content:"";position:absolute;inset:0;
+background:rgba(255,255,255,0.02);
+animation:flicker .1s infinite;
+}
+@keyframes flicker{0%,100%{opacity:.02}50%{opacity:.04}}
 
-        .crt-convex::after {
-            content: "";
-            position: absolute;
-            top: 5%;
-            left: 10%;
-            width: 80%;
-            height: 30%;
-            background: radial-gradient(ellipse, rgba(100, 255, 100, 0.12) 0%, transparent 70%);
-            pointer-events: none;
-            z-index: 4;
-            border-radius: 50%;
-            filter: blur(8px);
-        }
+/* noise */
+canvas{position:absolute;inset:0;opacity:.08;pointer-events:none}
 
-        .terminal {
-            width: 100%;
-            height: 100%;
-            padding: 1.8rem;
-            display: flex;
-            flex-direction: column;
-            color: #3eff7e;
-            position: relative;
-            z-index: 2;
-            overflow-y: auto;
-            background: #020a02;
-            background-image: radial-gradient(rgba(0, 40, 0, 0.3) 1px, transparent 1px);
-            background-size: 4px 4px;
-            text-shadow: 0 0 3px #00aa33;
-            border-radius: inherit;
-        }
+/* boot */
+#boot{
+position:absolute;inset:0;background:#000;
+display:flex;flex-direction:column;
+justify-content:center;align-items:center;
+color:#00ff88;font-size:18px;
+}
 
-        .boot-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #010a01;
-            z-index: 10000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            font-family: monospace;
-            color: #2eff7a;
-            transition: opacity 0.3s ease;
-        }
+/* terminal */
+#header{white-space:nowrap;overflow:hidden}
+#output{flex:1;overflow-y:auto;white-space:pre-wrap}
+#input-line{display:flex}
+#input{flex:1;background:transparent;border:none;color:#00ff88;outline:none;font-family:inherit}
 
-        .boot-screen.hidden {
-            opacity: 0;
-            pointer-events: none;
-            visibility: hidden;
-        }
-
-        .boot-version {
-            font-size: 2rem;
-            letter-spacing: 4px;
-            white-space: nowrap;
-            overflow-x: hidden;
-            max-width: 98vw;
-            padding: 0 1rem;
-        }
-
-        .boot-spinner {
-            font-size: 2.5rem;
-            margin-top: 1rem;
-        }
-
-        .version-scroll {
-            overflow-x: hidden;
-            white-space: nowrap;
-            margin-bottom: 0.8rem;
-            border-bottom: 1px solid #2e8b57;
-            padding-bottom: 0.3rem;
-        }
-
-        .system-version {
-            font-size: 2rem;
-            font-weight: bold;
-            letter-spacing: 3px;
-            display: inline-block;
-            font-family: monospace;
-        }
-
-        .dos-screen {
-            display: none;
-            flex-direction: column;
-            height: 100%;
-        }
-
-        .dos-screen.active {
-            display: flex;
-        }
-
-        .command-history {
-            flex: 1;
-            background: #020802aa;
-            border-radius: 12px;
-            padding: 0.8rem;
-            margin: 0.8rem 0;
-            overflow-y: auto;
-            font-size: 0.9rem;
-            font-family: monospace;
-            white-space: pre-wrap;
-        }
-
-        .history-line {
-            margin: 0.1rem 0;
-            line-height: 1.3;
-        }
-
-        .command-line {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: #041104cc;
-            padding: 0.5rem 0.8rem;
-            border-radius: 16px;
-            margin-top: 0.2rem;
-        }
-
-        .prompt {
-            font-size: 1rem;
-            font-weight: bold;
-            color: #b0ffb0;
-        }
-
-        #cmdInput {
-            background: transparent;
-            border: none;
-            color: #3eff7e;
-            font-family: monospace;
-            font-size: 0.95rem;
-            flex: 1;
-            outline: none;
-            caret-color: #5eff8f;
-        }
-
-        .effect-layer {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 10000;
-        }
-
-        #noiseCanvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            opacity: 0.25;
-            mix-blend-mode: overlay;
-            pointer-events: none;
-            z-index: 10001;
-        }
-
-        .scanlines {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: repeating-linear-gradient(0deg, rgba(0, 30, 0, 0.5) 0px, rgba(0, 255, 0, 0.08) 2px, transparent 3px, transparent 7px);
-            pointer-events: none;
-            z-index: 10002;
-            animation: scanMove 0.15s linear infinite;
-        }
-
-        @keyframes scanMove {
-            0% { background-position: 0 0; }
-            100% { background-position: 0 8px; }
-        }
-    </style>
+/* notifications */
+#notifications{position:absolute;bottom:20px;right:20px}
+.notification{
+background:#000;border-left:4px solid #00ff88;
+padding:10px;margin-top:10px;
+animation:fade 5s forwards;
+}
+@keyframes fade{
+0%{opacity:1}80%{opacity:1}100%{opacity:0}
+}
+</style>
 </head>
+
 <body>
 
-    <canvas id="noiseCanvas" class="effect-layer"></canvas>
-    <div class="scanlines"></div>
+<div id="crt">
+<canvas id="noise"></canvas>
 
-    <div id="bootScreen" class="boot-screen">
-        <div class="boot-version">TERMLINK PROTOCOL v.INF</div>
-        <div class="boot-spinner" id="bootSpinner">/</div>
-        <div style="margin-top: 2rem;">[ ACTIVATING TERMLINK ]</div>
-    </div>
+<div id="boot">
+<div>SSL расшифровка Shadow Since Laboratory v.INF</div>
+<div id="spinner">|</div>
+<div>[ ACTIVATING SECURE LAYER ]</div>
+</div>
 
-    <div class="crt-convex" id="crtConvex">
-        <div class="terminal">
-            <div class="version-scroll">
-                <div class="system-version">TERMLINK PROTOCOL v.INF // ACTIVE</div>
-            </div>
+<div id="header">SSL расшифровка Shadow Since Laboratory // ACTIVE</div>
+<div id="output"></div>
 
-            <div id="dosScreen" class="dos-screen">
-                <div class="command-history" id="historyContainer"></div>
-                <div class="command-line">
-                    <span class="prompt" id="currentPrompt">A&gt;</span>
-                    <input type="text" id="cmdInput" autofocus spellcheck="false" autocomplete="off">
-                </div>
-            </div>
-        </div>
-    </div>
+<div id="input-line">
+<span id="prompt">A></span>
+<input id="input" autofocus>
+</div>
 
-   <script>
-/* ================== BROADCAST + USERS ================== */
-const channel = new BroadcastChannel('ssl_admin_channel');
-const clientId = 'id_' + Math.random().toString(36).substr(2, 5);
+<div id="notifications"></div>
+</div>
 
-let usersList = {};
-let adminMode = false;
-
-/* регистрация */
-function register() {
-    usersList[clientId] = true;
-    channel.postMessage({ type: 'announce', id: clientId });
+<script>
+/* ================= NOISE ================= */
+const canvas=document.getElementById('noise');
+const ctx=canvas.getContext('2d');
+function resize(){canvas.width=innerWidth;canvas.height=innerHeight}
+window.onresize=resize;resize();
+function noise(){
+let img=ctx.createImageData(canvas.width,canvas.height);
+for(let i=0;i<img.data.length;i+=4){
+let v=Math.random()*255;
+img.data[i]=img.data[i+1]=img.data[i+2]=v;
+img.data[i+3]=20;
 }
-
-/* выход */
-function unregister() {
-    channel.postMessage({ type: 'leave', id: clientId });
+ctx.putImageData(img,0,0);
+requestAnimationFrame(noise);
 }
+noise();
 
-/* ================== NOTIFY ================== */
-function showNotification(message, color = '#3eff7e') {
-    const div = document.createElement('div');
-    div.className = 'notification';
-    div.style.borderLeftColor = color;
-    div.style.color = color;
-    div.innerText = message;
-    document.body.appendChild(div);
-    setTimeout(() => div.remove(), 5000);
+/* ================= BOOT ================= */
+const boot=document.getElementById('boot');
+const spinner=document.getElementById('spinner');
+let chars=['|','/','-','\\'],si=0;
+let spin=setInterval(()=>spinner.textContent=chars[si++%4],100);
+
+/* ================= USERS ================= */
+const channel=new BroadcastChannel('ssl_admin_channel');
+const myID='id_'+Math.random().toString(36).substr(2,5);
+let users={}; let admin=false;
+
+function register(){
+users[myID]=true;
+channel.postMessage({type:'announce',id:myID});
 }
+function unregister(){channel.postMessage({type:'leave',id:myID});}
 
-/* ================== CHANNEL ================== */
-channel.onmessage = (e) => {
-    const data = e.data;
-    if (!data) return;
+channel.onmessage=e=>{
+let d=e.data;
+if(!d)return;
 
-    switch (data.type) {
+if(d.type==='announce'){
+users[d.id]=true;
+if(d.id!==myID)channel.postMessage({type:'announce',id:myID});
+}
+if(d.type==='leave')delete users[d.id];
 
-        case 'announce':
-            usersList[data.id] = true;
-
-            if (data.id !== clientId) {
-                channel.postMessage({ type: 'announce', id: clientId });
-            }
-        break;
-
-        case 'leave':
-            delete usersList[data.id];
-        break;
-
-        case 'broadcast':
-            if (data.from !== clientId) {
-                showNotification(data.message, data.color);
-                addHistoryLine(`[SERVER] ${data.message}`);
-            }
-        break;
-
-        case 'direct':
-            if (data.to === clientId) {
-                showNotification(data.message, '#55ffff');
-                addHistoryLine(`[PRIVATE] ${data.message}`);
-            }
-        break;
-
-        case 'kick':
-            if (data.to === clientId) {
-                document.body.innerHTML = `
-                <div style="color:#3eff7e;background:#000;height:100vh;display:flex;justify-content:center;align-items:center;font-family:monospace;font-size:2rem;text-align:center;">
-                    SESSION TERMINATED<br>
-                    Reload page to reconnect.
-                </div>`;
-            }
-        break;
-    }
+if(d.type==='broadcast' && d.from!==myID){
+notify(d.msg,d.color);
+print("[SERVER] "+d.msg);
+}
+if(d.type==='direct' && d.to===myID){
+notify(d.msg,"cyan");
+print("[PRIVATE] "+d.msg);
+}
+if(d.type==='kick' && d.to===myID){
+document.body.innerHTML="<h1 style='color:#00ff88;text-align:center;margin-top:40vh'>SESSION TERMINATED<br>Reload page</h1>";
+}
 };
 
-window.addEventListener('beforeunload', unregister);
+window.onbeforeunload=unregister;
 
-/* ================== FILE SYSTEM ================== */
-const files = {
-    "001": {
-        name: "INFO.txt",
-        content: `=== SYSTEM INFORMATION ===
+/* ================= TERMINAL ================= */
+const out=document.getElementById('output');
+const input=document.getElementById('input');
+const prompt=document.getElementById('prompt');
+
+let history=[],hIndex=0;
+let pending=null;
+
+/* notify */
+function notify(msg,color){
+let n=document.createElement('div');
+n.className='notification';
+n.style.borderColor=color;
+n.textContent=msg;
+notifications.appendChild(n);
+setTimeout(()=>n.remove(),5000);
+}
+
+/* print */
+function print(t){
+out.innerText+=t+"\n";
+out.scrollTop=out.scrollHeight;
+}
+
+/* date/time */
+function getDate(){
+let d=new Date();
+return `${d.getMonth()+1}-${d.getDate()}-${d.getFullYear().toString().slice(-2)}`;
+}
+function getTime(){return new Date().toLocaleTimeString();}
+
+/* files */
+const files={
+"001":{name:"INFO.txt",content:`=== SYSTEM INFORMATION ===
 SSL расшифровка Shadow Since Laboratory
 ROBCO INDUSTRIES (TM)
 MILITECH MK31 DEFENDER
 ACTIVE SINCE 2049-08-04
-INFINITE CORE ONLINE`
-    },
-    "002": {
-        name: "STASON.dat",
-        password: "3350",
-        content: `=== STASON DATA ===
+INFINITE CORE ONLINE`},
+"002":{name:"STASON.dat",password:"3350",content:`=== STASON DATA ===
 [CONFIDENTIAL]
 ACCESS GRANTED
 SECURITY LEVEL: ALPHA
-SYSTEM OVERRIDE CODE: X7-990-0A1`
-    }
+SYSTEM OVERRIDE CODE: X7-990-0A1`}
 };
 
-/* ================== TERMINAL ================== */
-const historyContainer = document.getElementById('historyContainer');
-const cmdInput = document.getElementById('cmdInput');
-const promptSpan = document.getElementById('currentPrompt');
+/* init */
+function start(){
+print("╔══════════════════════════════════════════════════════════╗");
+print("║ SSL расшифровка Shadow Since Laboratory ║");
+print("╚══════════════════════════════════════════════════════════╝");
+print("");
+print("Enter today's date: "+getDate());
+}
 
-let pendingPassword = null;
+/* commands */
+function exec(cmd){
 
-/* ================== HISTORY (↑ ↓) ================== */
-let commandHistory = [];
-let historyIndex = -1;
+if(pending){
+if(pending==="admin"){
+if(cmd==="33419"){admin=true;prompt.textContent="ADMIN>";print("ACCESS GRANTED");}
+else print("ACCESS DENIED");
+}else{
+if(cmd===files[pending].password)print(files[pending].content);
+else print("ACCESS DENIED");
+}
+pending=null;return;
+}
 
-cmdInput.addEventListener('keydown', (e) => {
+print(prompt.textContent+" "+cmd);
 
-    if (e.key === 'ArrowUp') {
-        if (commandHistory.length === 0) return;
-        historyIndex = Math.max(0, historyIndex - 1);
-        cmdInput.value = commandHistory[historyIndex];
-        e.preventDefault();
-    }
+let p=cmd.split(" ");
 
-    if (e.key === 'ArrowDown') {
-        if (commandHistory.length === 0) return;
-        historyIndex = Math.min(commandHistory.length, historyIndex + 1);
+switch(p[0].toLowerCase()){
 
-        if (historyIndex === commandHistory.length) {
-            cmdInput.value = '';
-        } else {
-            cmdInput.value = commandHistory[historyIndex];
-        }
-        e.preventDefault();
-    }
+case "dir":
+if(!p[1]){
+for(let id in files){
+print(id+" "+files[id].name+" "+files[id].content.length+"B");
+}
+}else{
+let f=files[p[1]];
+if(!f)return print("NOT FOUND");
+if(f.password){pending=p[1];print("ENTER PASSWORD");}
+else print(f.content);
+}
+break;
 
-    if (e.key === 'Enter') {
-        const cmd = cmdInput.value.trim();
-        if (cmd !== "") {
-            commandHistory.push(cmd);
-            historyIndex = commandHistory.length;
-        }
+case "date":print(getDate());break;
+case "time":print(getTime());break;
+case "cls":out.innerText="";break;
+case "ver":print("TERMINAL v.INF");break;
 
-        handleCommand(cmd);
-        cmdInput.value = "";
-    }
+case "help":
+print(admin?"list send_all send_user kick exit":"DIR DATE TIME HELP CLS VER sslDM.EXE");
+break;
+
+case "ssldm.exe":pending="admin";print("ENTER ADMIN PASSWORD");break;
+
+case "exit":admin=false;prompt.textContent="A>";break;
+
+case "list":
+if(admin)Object.keys(users).forEach(u=>print(u));
+break;
+
+case "send_all":
+if(admin){
+let color=p[1];
+let msg=p.slice(2).join(" ");
+channel.postMessage({type:"broadcast",msg,color,from:myID});
+}
+break;
+
+case "send_user":
+if(admin){
+channel.postMessage({type:"direct",to:p[1],msg:p.slice(2).join(" "),from:myID});
+}
+break;
+
+case "kick":
+if(admin){
+channel.postMessage({type:"kick",to:p[1]});
+}
+break;
+
+default:print("UNKNOWN COMMAND");
+}
+}
+
+/* input + history */
+input.addEventListener('keydown',e=>{
+if(e.key==="ArrowUp"){
+if(history.length){
+hIndex=Math.max(0,hIndex-1);
+input.value=history[hIndex];
+}
+}
+if(e.key==="ArrowDown"){
+if(history.length){
+hIndex=Math.min(history.length,hIndex+1);
+input.value=history[hIndex]||"";
+}
+}
+if(e.key==="Enter"){
+let cmd=input.value.trim();
+if(cmd){
+history.push(cmd);
+hIndex=history.length;
+}
+exec(cmd);
+input.value="";
+}
 });
 
-/* ================== HELPERS ================== */
-function addHistoryLine(text) {
-    const div = document.createElement('div');
-    div.className = 'history-line';
-    div.innerText = text;
-    historyContainer.appendChild(div);
-    historyContainer.scrollTop = historyContainer.scrollHeight;
-}
+/* start */
+setTimeout(()=>{
+clearInterval(spin);
+boot.style.display="none";
+start();
+register();
+},4000);
 
-function getDate() {
-    const d = new Date();
-    return `${(d.getMonth()+1)}-${d.getDate()}-${d.getFullYear().toString().slice(-2)}`;
-}
-
-function getTime() {
-    return new Date().toLocaleTimeString();
-}
-
-/* ================== INIT ================== */
-function init() {
-    addHistoryLine("╔══════════════════════════════════════════════════════════╗");
-    addHistoryLine("║        SSL расшифровка Shadow Since Laboratory          ║");
-    addHistoryLine("║         ROBCO INDUSTRIES (TM) TERMINAL v.INF             ║");
-    addHistoryLine("╚══════════════════════════════════════════════════════════╝");
-    addHistoryLine("");
-    addHistoryLine(`Enter today's date (m-d-y): ${getDate()}`);
-    addHistoryLine("");
-}
-
-/* ================== COMMAND HANDLER ================== */
-function handleCommand(cmd) {
-
-    if (pendingPassword) {
-        if (pendingPassword === "admin") {
-            if (cmd === "33419") {
-                adminMode = true;
-                promptSpan.innerText = "ADMIN>";
-                addHistoryLine("ACCESS GRANTED");
-            } else addHistoryLine("ACCESS DENIED");
-        } else {
-            if (cmd === files[pendingPassword].password) {
-                addHistoryLine(files[pendingPassword].content);
-            } else addHistoryLine("ACCESS DENIED");
-        }
-        pendingPassword = null;
-        return;
-    }
-
-    addHistoryLine(`${promptSpan.innerText} ${cmd}`);
-
-    const parts = cmd.split(" ");
-
-    switch(parts[0].toLowerCase()) {
-
-        case "dir":
-            if (!parts[1]) {
-                for (let id in files) {
-                    let size = files[id].content.length;
-                    addHistoryLine(`${id}  ${files[id].name}  ${size}B`);
-                }
-            } else {
-                let f = files[parts[1]];
-                if (!f) return addHistoryLine("FILE NOT FOUND");
-
-                if (f.password) {
-                    pendingPassword = parts[1];
-                    addHistoryLine("ENTER PASSWORD:");
-                } else {
-                    addHistoryLine(f.content);
-                }
-            }
-        break;
-
-        case "date":
-            addHistoryLine(getDate());
-        break;
-
-        case "time":
-            addHistoryLine(getTime());
-        break;
-
-        case "cls":
-            historyContainer.innerHTML = "";
-        break;
-
-        case "ver":
-            addHistoryLine("TERMINAL v.INF");
-        break;
-
-        case "help":
-            if (adminMode) {
-                addHistoryLine("ADMIN COMMANDS:");
-                addHistoryLine("list, send_all, send_user, kick, exit");
-            } else {
-                addHistoryLine("DIR, DATE, TIME, HELP, CLS, VER, sslDM.EXE");
-            }
-        break;
-
-        case "ssldm.exe":
-            pendingPassword = "admin";
-            addHistoryLine("ENTER ADMIN PASSWORD:");
-        break;
-
-        case "exit":
-            adminMode = false;
-            promptSpan.innerText = "A>";
-        break;
-
-        case "list":
-            if (adminMode) {
-                Object.keys(usersList).forEach(u => addHistoryLine(u));
-            }
-        break;
-
-        case "send_all":
-            if (adminMode) {
-                let color = parts[1];
-                let msg = parts.slice(2).join(" ");
-                channel.postMessage({
-                    type: "broadcast",
-                    message: msg,
-                    color: color,
-                    from: clientId
-                });
-            }
-        break;
-
-        case "send_user":
-            if (adminMode) {
-                let id = parts[1];
-                let msg = parts.slice(2).join(" ");
-                channel.postMessage({
-                    type: "direct",
-                    to: id,
-                    message: msg,
-                    from: clientId
-                });
-            }
-        break;
-
-        case "kick":
-            if (adminMode) {
-                channel.postMessage({
-                    type: "kick",
-                    to: parts[1]
-                });
-            }
-        break;
-
-        default:
-            addHistoryLine("UNKNOWN COMMAND");
-    }
-}
-
-/* ================== START ================== */
-setTimeout(() => {
-    init();
-    register();
-}, 4100);
-
-/* focus */
-document.querySelector('.terminal').addEventListener('click', () => cmdInput.focus());
+document.getElementById('crt').onclick=()=>input.focus();
 
 </script>
 </body>
