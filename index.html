@@ -252,7 +252,6 @@
             100% { opacity: 0; visibility: hidden; transform: translateX(20px); }
         }
 
-        /* Markdown редактор */
         #mdEditor {
             display: none;
             flex-direction: column;
@@ -317,7 +316,6 @@
             background: #1a4a1a;
         }
 
-        /* Модальное окно для просмотра Markdown */
         .markdown-viewer {
             display: none;
             position: fixed;
@@ -418,13 +416,12 @@
                 </div>
             </div>
 
-            <!-- Редактор -->
             <div id="mdEditor">
                 <div class="editor-toolbar">
-                    <span>📝 EDITOR: <span id="mdFileName">untitled.md</span></span>
+                    <span>EDITOR: <span id="mdFileName">untitled.md</span></span>
                     <div>
-                        <button class="save-btn" id="saveBtn">💾 SAVE</button>
-                        <span style="margin-left: 8px;">🔚 ESC</span>
+                        <button class="save-btn" id="saveBtn">SAVE</button>
+                        <span style="margin-left: 8px;">ESC</span>
                     </div>
                 </div>
                 <textarea id="mdInput" placeholder="Write Markdown here..."></textarea>
@@ -433,19 +430,18 @@
         </div>
     </div>
 
-    <!-- Модальное окно для просмотра Markdown -->
     <div id="markdownViewer" class="markdown-viewer">
         <div class="viewer-content">
             <div class="viewer-header">
                 <span id="viewerTitle">Markdown Preview</span>
-                <button id="closeViewerBtn">✖</button>
+                <button id="closeViewerBtn">X</button>
             </div>
             <div id="viewerBody" class="viewer-body"></div>
         </div>
     </div>
 
     <script>
-        // ================== ТОКЕН ==================
+        // ================== TOKEN ==================
         const DEFAULT_TOKEN = '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';
         const DEFAULT_GIST_ID = '03360f2ddda0253c68766cea35107a82';
 
@@ -460,7 +456,7 @@
         let gistId = localStorage.getItem('gist_id');
         let gistFiles = {};
 
-        // ================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==================
+        // ================== GLOBAL VARIABLES ==================
         const channel = new BroadcastChannel('ssl_admin_channel');
         const clientId = 'id_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now();
         let adminMode = false;
@@ -579,19 +575,19 @@
             }
             else if (data.type === 'broadcast') {
                 if (data.from !== clientId) {
-                    showNotification(`📢 MESSAGE FROM ADMIN: ${data.message}`, data.color || '#3eff7e');
+                    showNotification(`MESSAGE FROM ADMIN: ${data.message}`, data.color || '#3eff7e');
                     addHistoryLine(`[SERVER] Admin broadcast: ${data.message}`, false);
                 }
             }
             else if (data.type === 'direct') {
                 if (data.targetId === clientId) {
-                    showNotification(`✉️ PRIVATE from ${data.from}: ${data.message}`, data.color || '#3eff7e');
+                    showNotification(`PRIVATE from ${data.from}: ${data.message}`, data.color || '#3eff7e');
                     addHistoryLine(`[PRIVATE] ${data.from}: ${data.message}`, false);
                 }
             }
             else if (data.type === 'kick') {
                 if (data.targetId === clientId) {
-                    showNotification('⚠️ You have been kicked by administrator!', '#ff5555');
+                    showNotification('You have been kicked by administrator!', '#ff5555');
                     addHistoryLine('[SYSTEM] You were kicked. Reloading...', false);
                     setTimeout(() => {
                         document.body.innerHTML = '<div style="color:#3eff7e; background:#000; display:flex; justify-content:center; align-items:center; height:100vh; font-family:monospace; flex-direction:column;">SESSION TERMINATED<br><span style="font-size:0.8rem;">Reload page to reconnect.</span></div>';
@@ -960,14 +956,14 @@
             saveMDFile();
         });
 
-        // ================== MARKDOWN VIEWER (отдельное окно) ==================
+        // ================== MARKDOWN VIEWER ==================
         const viewer = document.getElementById('markdownViewer');
         const viewerTitle = document.getElementById('viewerTitle');
         const viewerBody = document.getElementById('viewerBody');
         const closeViewerBtn = document.getElementById('closeViewerBtn');
 
         function showMarkdownViewer(filename, content) {
-            viewerTitle.innerText = `📄 ${filename}`;
+            viewerTitle.innerText = `File: ${filename}`;
             viewerBody.innerHTML = renderMarkdown(content);
             viewer.classList.add('active');
         }
@@ -977,7 +973,6 @@
         }
 
         closeViewerBtn.addEventListener('click', closeMarkdownViewer);
-        // Закрытие по ESC
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && viewer.classList.contains('active')) {
                 closeMarkdownViewer();
@@ -1076,7 +1071,6 @@
                         }
                         await loadGistFiles();
                         if (gistFiles[target] !== undefined) {
-                            // Для .md файлов открываем модальное окно просмотра
                             if (target.endsWith('.md')) {
                                 showMarkdownViewer(target, gistFiles[target]);
                             } else {
