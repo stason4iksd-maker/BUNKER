@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>TERMLINK PROTOCOL // FILE SYSTEM v.INF</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Courier New', 'Fira Code', 'VT323', monospace;
+            /* КУРСОР из ссылки */
+            cursor: url('https://i.ibb.co/WNRqtkN3/image-9.png'), auto;
+        }
+
+        /* ВЫПУКЛЫЙ CRT ЭКРАН */
+        .crt-convex {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: #030a03;
+            border-radius: 60px / 40px;
+            overflow: hidden;
+            box-shadow: 
+                inset 0 0 80px rgba(0, 20, 0, 0.9),
+                0 0 0 6px #1a3a1a,
+                0 0 0 12px #0a1f0a;
+            transform: perspective(1200px) rotateX(2deg) rotateY(0.5deg);
+            transition: transform 0.1s ease;
+        }
+
+        .crt-convex::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at center, rgba(0, 255, 0, 0.05) 0%, rgba(0, 0, 0, 0.4) 80%);
+            pointer-events: none;
+            z-index: 3;
+            border-radius: inherit;
+        }
+
+        .crt-convex::after {
+            content: "";
+            position: absolute;
+            top: 5%;
+            left: 10%;
+            width: 80%;
+            height: 30%;
+            background: radial-gradient(ellipse, rgba(100, 255, 100, 0.12) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 4;
+            border-radius: 50%;
+            filter: blur(8px);
+        }
+
+        .terminal {
+            width: 100%;
+            height: 100%;
+            padding: 1.8rem;
+            display: flex;
+            flex-direction: column;
+            color: #3eff7e;
+            position: relative;
+            z-index: 2;
+            overflow-y: auto;
+            background: #020a02;
+            background-image: radial-gradient(rgba(0, 40, 0, 0.3) 1px, transparent 1px);
+            background-size: 4px 4px;
+            text-shadow: 0 0 3px #00aa33;
+            border-radius: inherit;
+        }
+
+        /* ЗАГРУЗОЧНЫЙ ЭКРАН */
+        .boot-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #010a01;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: monospace;
+            color: #2eff7a;
+            transition: opacity 0.3s ease;
+        }
+        .boot-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+            visibility: hidden;
+        }
+        .boot-version {
+            font-size: 2rem;
+            letter-spacing: 4px;
+            white-space: nowrap;
+            overflow-x: hidden;
+            max-width: 98vw;
+            padding: 0 1rem;
+        }
+        .boot-spinner {
+            font-size: 2.5rem;
+            margin-top: 1rem;
+        }
+
+        /* Строка версии */
+        .version-scroll {
+            overflow-x: hidden;
+            white-space: nowrap;
+            margin-bottom: 0.8rem;
+            border-bottom: 1px solid #2e8b57;
+            padding-bottom: 0.3rem;
+        }
+        .system-version {
+            font-size: 2rem;
+            font-weight: bold;
+            letter-spacing: 3px;
+            display: inline-block;
+            font-family: monospace;
+        }
+
+        .dos-screen {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+        }
+        .dos-screen.active {
+            display: flex;
+        }
+        .command-history {
+            flex: 1;
+            background: #020802aa;
+            border-radius: 12px;
+            padding: 0.8rem;
+            margin: 0.8rem 0;
+            overflow-y: auto;
+            font-size: 0.9rem;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .history-line {
+            margin: 0.1rem 0;
+            line-height: 1.3;
+        }
+        .command-line {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: #041104cc;
+            padding: 0.5rem 0.8rem;
+            border-radius: 16px;
+            margin-top: 0.2rem;
+        }
+        .prompt {
+            font-size: 1rem;
+            font-weight: bold;
+            color: #b0ffb0;
+        }
+        #cmdInput {
+            background: transparent;
+            border: none;
+            color: #3eff7e;
+            font-family: monospace;
+            font-size: 0.95rem;
+            flex: 1;
+            outline: none;
+            caret-color: #5eff8f;
+        }
+
+        .control-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+            margin-top: 1rem;
+            align-items: center;
+            border-top: 1px solid #2a6e2a;
+            padding-top: 0.8rem;
+            font-size: 0.7rem;
+        }
+        .fx-toggles {
+            display: flex;
+            gap: 1rem;
+            background: #061006b3;
+            padding: 0.3rem 0.8rem;
+            border-radius: 28px;
+        }
+        .fx-toggles label {
+            color: #bbffbb;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .howto {
+            font-size: 0.65rem;
+            background: #071007aa;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            color: #aaffaa;
+        }
+
+        .effect-layer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10000;
+        }
+        #noiseCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.25;
+            mix-blend-mode: overlay;
+            pointer-events: none;
+            z-index: 10001;
+        }
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(0deg, rgba(0, 30, 0, 0.5) 0px, rgba(0, 255, 0, 0.08) 2px, transparent 3px, transparent 7px);
+            pointer-events: none;
+            z-index: 10002;
+            animation: scanMove 0.15s linear infinite;
+        }
+        @keyframes scanMove {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 8px; }
+        }
+        @keyframes crtFlicker {
+            0% { opacity: 0.97; }
+            100% { opacity: 1; }
+        }
+        body {
+            animation: crtFlicker 0.08s infinite;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="noiseCanvas" class="effect-layer"></canvas>
+    <div class="scanlines" id="scanlinesLayer"></div>
+
+    <!-- ЗАГРУЗОЧНЫЙ ЭКРАН 4 СЕКУНДЫ -->
+    <div id="bootScreen" class="boot-screen">
+        <div class="boot-version" id="bootVersion">TERMLINK PROTOCOL v.INF</div>
+        <div class="boot-spinner" id="bootSpinner">/</div>
+        <div style="margin-top: 2rem;">[ ACTIVATING TERMLINK ]</div>
+    </div>
+
+    <div class="crt-convex" id="crtConvex">
+        <div class="terminal">
+            <div class="version-scroll">
+                <div class="system-version">TERMLINK PROTOCOL v.INF // ACTIVE</div>
+            </div>
+
+            <div id="dosScreen" class="dos-screen">
+                <div class="command-history" id="historyContainer"></div>
+                <div class="command-line">
+                    <span class="prompt" id="currentPrompt">A&gt;</span>
+                    <input type="text" id="cmdInput" autofocus spellcheck="false" autocomplete="off">
+                </div>
+            </div>
+
+            <div class="control-bar">
+                <div class="fx-toggles">
+                    <label><input type="checkbox" id="toggleNoise" checked> 📺 ШУМ</label>
+                    <label><input type="checkbox" id="toggleScanlines" checked> 📼 ПОЛОСЫ</label>
+                </div>
+                <div class="howto">🖱️ КУРСОР ЗАМЕНЁН (изображение)</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Функции даты/времени
+        function getCurrentDate() {
+            const now = new Date();
+            const month = (now.getMonth() + 1).toString().padStart(2, '0');
+            const day = now.getDate().toString().padStart(2, '0');
+            const year = now.getFullYear().toString().slice(-2);
+            return `${month}-${day}-${year}`;
+        }
+        function getCurrentTime() {
+            const now = new Date();
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const seconds = now.getSeconds().toString().padStart(2, '0');
+            return `${hours}:${minutes}:${seconds}`;
+        }
+
+        // ЗАГРУЗКА 4 сек
+        const bootScreen = document.getElementById('bootScreen');
+        const dosScreen = document.getElementById('dosScreen');
+        const bootSpinner = document.getElementById('bootSpinner');
+        let spinIdx = 0;
+        const spinnerChars = ["l", "/", "-", "\\"];
+        const spinnerInterval = setInterval(() => {
+            spinIdx = (spinIdx + 1) % spinnerChars.length;
+            if (bootSpinner) bootSpinner.innerText = spinnerChars[spinIdx];
+        }, 150);
+
+        setTimeout(() => {
+            clearInterval(spinnerInterval);
+            bootScreen.classList.add('hidden');
+            dosScreen.classList.add('active');
+            initHistory();
+            document.getElementById('cmdInput').focus();
+        }, 4000);
+
+        // ШУМ
+        const noiseCanvas = document.getElementById('noiseCanvas');
+        let noiseCtx = noiseCanvas.getContext('2d');
+        let noiseActive = true;
+        function resizeNoise() {
+            noiseCanvas.width = window.innerWidth;
+            noiseCanvas.height = window.innerHeight;
+        }
+        function generateNoise() {
+            if (!noiseActive) {
+                if (noiseCtx) noiseCtx.clearRect(0, 0, noiseCanvas.width, noiseCanvas.height);
+                requestAnimationFrame(generateNoise);
+                return;
+            }
+            const w = noiseCanvas.width, h = noiseCanvas.height;
+            const imgData = noiseCtx.createImageData(w, h);
+            for (let i = 0; i < imgData.data.length; i += 4) {
+                const val = Math.random() * 80 + 30;
+                imgData.data[i] = val - 20;
+                imgData.data[i+1] = val + 40;
+                imgData.data[i+2] = val - 30;
+                imgData.data[i+3] = 90 + Math.random() * 70;
+            }
+            noiseCtx.putImageData(imgData, 0, 0);
+            requestAnimationFrame(generateNoise);
+        }
+        window.addEventListener('resize', () => resizeNoise());
+        resizeNoise();
+        generateNoise();
+        const toggleNoise = document.getElementById('toggleNoise');
+        toggleNoise.addEventListener('change', (e) => { noiseActive = e.target.checked; });
+
+        // ПОЛОСЫ
+        const scanDiv = document.getElementById('scanlinesLayer');
+        document.getElementById('toggleScanlines').addEventListener('change', (e) => {
+            scanDiv.style.opacity = e.target.checked ? '1' : '0';
+        });
+
+        // ФАЙЛОВАЯ СИСТЕМА С ID
+        const files = [
+            { id: '001', name: 'INFO', ext: 'TXT', size: 128, date: getCurrentDate(), 
+              content: '=== SYSTEM INFORMATION ===\nTERMLINK PROTOCOL v.INF\nACTIVE NODE: MILITECH MK31\nSECURITY LEVEL: OMEGA\nCONNECTION: STABLE\nUPTIME: INFINITE' },
+            { id: '002', name: 'STASON', ext: 'DAT', size: 256, date: getCurrentDate(), 
+              password: '3350',
+              content: '=== STASON LOGS ===\nCLASSIFIED: EYES ONLY\nOPERATION: NIGHTFALL\nSTATUS: PENDING\nACCESS GRANTED.\nDECODED MESSAGE: THE SIGNAL IS ACTIVE.' }
+        ];
+
+        // Ожидание пароля для 002
+        let awaitingPassword = false;
+        let pendingFileId = null;
+
+        // История
+        const historyContainer = document.getElementById('historyContainer');
+        const cmdInput = document.getElementById('cmdInput');
+        const promptSpan = document.getElementById('currentPrompt');
+        let currentPath = 'A';
+
+        function addHistoryLine(text, isCommand = false) {
+            const line = document.createElement('div');
+            line.className = 'history-line';
+            line.style.color = isCommand ? '#b0ffb0' : '#9eff9e';
+            line.innerText = text;
+            historyContainer.appendChild(line);
+            historyContainer.scrollTop = historyContainer.scrollHeight;
+        }
+
+        function initHistory() {
+            addHistoryLine('╔══════════════════════════════════════════════════════════╗');
+            addHistoryLine('║              TERMLINK PROTOCOL ACTIVE                    ║');
+            addHistoryLine('║         ROBCO INDUSTRIES (TM) TERMINAL v.INF             ║');
+            addHistoryLine('║            (C) 2049 MILITECH / ROBCO CORP.               ║');
+            addHistoryLine('╚══════════════════════════════════════════════════════════╝');
+            addHistoryLine('');
+            addHistoryLine(`Enter today's date (m-d-y): ${getCurrentDate()}`);
+            addHistoryLine('');
+            addHistoryLine('Available commands: DIR, DIR <ID>, DATE, TIME, HELP, CLS, VER');
+            addHistoryLine('');
+        }
+
+        function displayFileContent(file) {
+            addHistoryLine(`=== ${file.name}.${file.ext} (ID: ${file.id}) ===`);
+            file.content.split('\n').forEach(line => addHistoryLine(line));
+            addHistoryLine('=== END OF FILE ===');
+        }
+
+        function processCommand(cmd) {
+            const trimmed = cmd.trim();
+            if (trimmed === '') return;
+
+            // Если ожидаем пароль
+            if (awaitingPassword && pendingFileId) {
+                addHistoryLine(`${currentPath}>${trimmed}`, true);
+                if (trimmed === files.find(f => f.id === pendingFileId)?.password) {
+                    const file = files.find(f => f.id === pendingFileId);
+                    displayFileContent(file);
+                } else {
+                    addHistoryLine('ACCESS DENIED: Incorrect password.');
+                }
+                awaitingPassword = false;
+                pendingFileId = null;
+                return;
+            }
+
+            addHistoryLine(`${currentPath}>${trimmed}`, true);
+            const parts = trimmed.split(/\s+/);
+            const command = parts[0].toLowerCase();
+
+            // Команда DIR без аргументов — список файлов с ID
+            if (command === 'dir') {
+                if (parts.length === 1) {
+                    addHistoryLine(' Volume in drive A is TERMLINK_VOL');
+                    addHistoryLine(' Volume Serial Number is 2E47-1901');
+                    addHistoryLine('');
+                    addHistoryLine(' ID    Name         Size   Date');
+                    for (const f of files) {
+                        const idPad = f.id.padEnd(6);
+                        const namePad = (f.name + '.' + f.ext).padEnd(12);
+                        const sizePad = f.size.toString().padStart(5);
+                        addHistoryLine(` ${idPad} ${namePad} ${sizePad}  ${f.date}`);
+                    }
+                    addHistoryLine(`       ${files.length} File(s)         5120 bytes free`);
+                } 
+                else {
+                    // DIR <ID>
+                    const id = parts[1];
+                    const foundFile = files.find(f => f.id === id);
+                    if (!foundFile) {
+                        addHistoryLine(`File with ID "${id}" not found.`);
+                        return;
+                    }
+                    if (foundFile.id === '002') {
+                        // Требуем пароль
+                        awaitingPassword = true;
+                        pendingFileId = '002';
+                        addHistoryLine('Password required:');
+                    } else {
+                        displayFileContent(foundFile);
+                    }
+                }
+            }
+            else if (command === 'date') {
+                addHistoryLine(`Current date is ${getCurrentDate()}`);
+                addHistoryLine('Enter new date (m-d-y):');
+            }
+            else if (command === 'time') {
+                addHistoryLine(`Current time is ${getCurrentTime()}`);
+                addHistoryLine('Enter new time:');
+            }
+            else if (command === 'help') {
+                addHistoryLine('Available commands:');
+                addHistoryLine('  DIR          - list all files with IDs');
+                addHistoryLine('  DIR <ID>     - open file by ID (e.g., DIR 001)');
+                addHistoryLine('  DATE         - show current system date');
+                addHistoryLine('  TIME         - show current system time');
+                addHistoryLine('  CLS          - clear screen');
+                addHistoryLine('  VER          - display terminal version');
+                addHistoryLine('  HELP         - show this help');
+                addHistoryLine('');
+                addHistoryLine('Files:');
+                addHistoryLine('  001  INFO.TXT    - system information');
+                addHistoryLine('  002  STASON.DAT  - protected (password required)');
+            }
+            else if (command === 'cls') {
+                while (historyContainer.firstChild) historyContainer.removeChild(historyContainer.firstChild);
+                addHistoryLine('╔══════════════════════════════════════════════════════════╗');
+                addHistoryLine('║              TERMLINK PROTOCOL ACTIVE                    ║');
+                addHistoryLine('║         ROBCO INDUSTRIES (TM) TERMINAL v.INF             ║');
+                addHistoryLine('╚══════════════════════════════════════════════════════════╝');
+                addHistoryLine('');
+            }
+            else if (command === 'ver') {
+                addHistoryLine('TERMLINK PROTOCOL v.INF // ROBCO INDUSTRIES (TM)');
+                addHistoryLine('ACTIVE SINCE 2049-08-04 // INFINITE CORE');
+            }
+            else {
+                addHistoryLine(`Bad command or file name: ${trimmed}`);
+            }
+        }
+
+        cmdInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                processCommand(cmdInput.value);
+                cmdInput.value = '';
+            }
+        });
+
+        document.querySelector('.terminal').addEventListener('click', () => {
+            cmdInput.focus();
+        });
+
+        // Эффект дыхания выпуклости
+        const convexDiv = document.getElementById('crtConvex');
+        let breathDirection = 1;
+        let breathValue = 0;
+        setInterval(() => {
+            breathValue += 0.02 * breathDirection;
+            if (breathValue > 1.2) breathDirection = -1;
+            if (breathValue < -0.2) breathDirection = 1;
+            const rotateY = 0.5 + breathValue * 0.15;
+            const rotateX = 2 + breathValue * 0.3;
+            convexDiv.style.transform = `perspective(1200px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+        }, 180);
+    </script>
+</body>
+</html>
