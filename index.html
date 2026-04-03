@@ -357,7 +357,7 @@
     </div>
 
     <script>
-        // ================== НОВЫЙ ТОКЕН ==================
+        // ================== ТОКЕН (НОВЫЙ) ==================
         const DEFAULT_TOKEN = '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';
         const DEFAULT_GIST_ID = '03360f2ddda0253c68766cea35107a82';
 
@@ -958,22 +958,16 @@
                         return;
                     } else {
                         const target = parts[1];
-                        // сначала проверяем системные файлы по ID
                         if (/^\d{3}$/.test(target)) {
                             displaySystemFile(target);
                             return;
                         }
                         await loadGistFiles();
                         if (gistFiles[target] !== undefined) {
-                            // ЕСЛИ ФАЙЛ .md - ОТКРЫВАЕМ РЕДАКТОР
-                            if (target.endsWith('.md')) {
-                                openMDEditor(target, gistFiles[target]);
-                            } else {
-                                // иначе просто выводим содержимое
-                                addHistoryLine(`=== ${target} ===`);
-                                gistFiles[target].split('\n').forEach(line => addHistoryLine(line));
-                                addHistoryLine('');
-                            }
+                            // .md файлы показываем в режиме просмотра (как текст)
+                            addHistoryLine(`=== ${target} ===`);
+                            gistFiles[target].split('\n').forEach(line => addHistoryLine(line));
+                            addHistoryLine('');
                             return;
                         }
                         addHistoryLine(`File not found: ${target}`);
@@ -983,7 +977,7 @@
             else if (command === 'help') {
                 addHistoryLine('Available commands:');
                 addHistoryLine('  DIR                     - list system + cloud files');
-                addHistoryLine('  DIR <ID|filename>       - open file (Markdown opens editor)');
+                addHistoryLine('  DIR <ID|filename>       - view file content (Markdown as text)');
                 addHistoryLine('  DIR NEW [filename.md]   - create new Markdown file');
                 addHistoryLine('  DIR EDIT <filename.md>  - edit Markdown file');
                 addHistoryLine('  CLS                     - clear screen');
