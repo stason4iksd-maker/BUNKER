@@ -357,8 +357,8 @@
     </div>
 
     <script>
-        // ================== ТОКЕН И GIST ID (НОВЫЙ ТОКЕН) ==================
-        const DEFAULT_TOKEN = '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';
+        // ================== НОВЫЙ ТОКЕН ==================
+        const DEFAULT_TOKEN = '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';
         const DEFAULT_GIST_ID = '03360f2ddda0253c68766cea35107a82';
 
         if (!localStorage.getItem('gist_token')) {
@@ -872,11 +872,9 @@
             saveMDFile();
         });
 
-        // ================== USER COMMANDS (DIR NEW / DIR EDIT) ==================
-        // Создание нового файла: DIR NEW [filename.md]
+        // ================== USER COMMANDS ==================
         async function userCreateFile(filename) {
             if (!filename) {
-                // запросить имя интерактивно
                 addHistoryLine('Enter new filename (must end with .md):');
                 pendingFileId = { type: 'user_new_filename' };
                 cmdInput.dataset.mode = "new_filename";
@@ -884,7 +882,6 @@
                 cmdInput.focus();
                 return;
             }
-            // проверка имени
             if (!filename.endsWith('.md')) {
                 addHistoryLine('Filename must end with .md');
                 return;
@@ -893,7 +890,6 @@
                 addHistoryLine('Filename cannot contain spaces');
                 return;
             }
-            // создаём файл и открываем редактор
             addHistoryLine(`Creating new file: ${filename}`);
             openMDEditor(filename, '# New File\n\nWrite your content here.');
         }
@@ -950,7 +946,6 @@
                 } else {
                     const sub = parts[1].toLowerCase();
                     if (sub === 'new') {
-                        // DIR NEW [filename]
                         const filename = parts[2] || null;
                         await userCreateFile(filename);
                         return;
@@ -963,20 +958,22 @@
                         return;
                     } else {
                         const target = parts[1];
+                        // сначала проверяем системные файлы по ID
                         if (/^\d{3}$/.test(target)) {
                             displaySystemFile(target);
                             return;
                         }
                         await loadGistFiles();
                         if (gistFiles[target] !== undefined) {
-                            const content = gistFiles[target];
-                            addHistoryLine(`=== ${target} ===`);
+                            // ЕСЛИ ФАЙЛ .md - ОТКРЫВАЕМ РЕДАКТОР
                             if (target.endsWith('.md')) {
-                                content.split('\n').forEach(line => addHistoryLine(line));
+                                openMDEditor(target, gistFiles[target]);
                             } else {
-                                content.split('\n').forEach(line => addHistoryLine(line));
+                                // иначе просто выводим содержимое
+                                addHistoryLine(`=== ${target} ===`);
+                                gistFiles[target].split('\n').forEach(line => addHistoryLine(line));
+                                addHistoryLine('');
                             }
-                            addHistoryLine('');
                             return;
                         }
                         addHistoryLine(`File not found: ${target}`);
@@ -986,7 +983,7 @@
             else if (command === 'help') {
                 addHistoryLine('Available commands:');
                 addHistoryLine('  DIR                     - list system + cloud files');
-                addHistoryLine('  DIR <ID|filename>       - open file');
+                addHistoryLine('  DIR <ID|filename>       - open file (Markdown opens editor)');
                 addHistoryLine('  DIR NEW [filename.md]   - create new Markdown file');
                 addHistoryLine('  DIR EDIT <filename.md>  - edit Markdown file');
                 addHistoryLine('  CLS                     - clear screen');
