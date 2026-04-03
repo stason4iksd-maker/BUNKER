@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>SSL // ADMIN PANEL</title>
+    <title>SSL // MARKDOWN + GIST (AUTO)</title>
     <style>
         * {
             margin: 0;
@@ -142,13 +142,9 @@
         }
 
         .dos-screen {
-            display: none;
+            display: flex;
             flex-direction: column;
             height: 100%;
-        }
-
-        .dos-screen.active {
-            display: flex;
         }
 
         .command-history {
@@ -255,6 +251,57 @@
             80% { opacity: 1; }
             100% { opacity: 0; visibility: hidden; transform: translateX(20px); }
         }
+
+        #mdEditor {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+            background: #020a02;
+            border-radius: 12px;
+            margin: 0.8rem 0;
+            overflow: hidden;
+        }
+        #mdInput {
+            flex: 1;
+            background: #000;
+            color: #3eff7e;
+            border: none;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            resize: none;
+            outline: none;
+            border-bottom: 1px solid #2e8b57;
+        }
+        #mdPreview {
+            flex: 1;
+            background: #020802;
+            color: #9eff9e;
+            padding: 10px;
+            overflow: auto;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        #mdPreview h1, #mdPreview h2, #mdPreview h3 {
+            color: #b0ffb0;
+            margin: 0.5rem 0;
+        }
+        #mdPreview code {
+            background: #0a2a0a;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+        .editor-toolbar {
+            background: #041104;
+            padding: 5px 10px;
+            border-bottom: 1px solid #2e8b57;
+            display: flex;
+            gap: 1rem;
+            font-size: 0.8rem;
+        }
+        .editor-toolbar span {
+            color: #8eff8e;
+        }
     </style>
 </head>
 <body>
@@ -271,7 +318,7 @@
     <div class="crt-convex" id="crtConvex">
         <div class="terminal">
             <div class="version-scroll">
-                <div class="system-version">SSL // ACTIVE</div>
+                <div class="system-version">SSL // MARKDOWN + GIST (AUTO)</div>
             </div>
 
             <div id="dosScreen" class="dos-screen">
@@ -281,37 +328,84 @@
                     <input type="text" id="cmdInput" autofocus spellcheck="false" autocomplete="off">
                 </div>
             </div>
+
+            <div id="mdEditor">
+                <div class="editor-toolbar">
+                    <span>📝 EDITOR: <span id="mdFileName">untitled.md</span></span>
+                    <span>💾 CTRL+S | 🔚 ESC</span>
+                </div>
+                <textarea id="mdInput" placeholder="Write Markdown here..."></textarea>
+                <div id="mdPreview"></div>
+            </div>
         </div>
     </div>
 
     <script>
+        // ================== ПРИНУДИТЕЛЬНАЯ УСТАНОВКА ТОКЕНА И GIST ID ==================
+        if (!localStorage.getItem('gist_token')) {
+            localStorage.setItem('gist_token', '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');
+        }
+        if (!localStorage.getItem('gist_id')) {
+            localStorage.setItem('gist_id', '03360f2ddda0253c68766cea35107a82');
+        }
+
+        // ================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==================
         const channel = new BroadcastChannel('ssl_admin_channel');
         const clientId = 'id_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now();
         let adminMode = false;
         let onlineUsers = new Set();
 
-        const files = {
-            "001": {
-                name: "INFO.txt",
-                content: "=== SYSTEM INFORMATION ===\nSSL // ROBCO INDUSTRIES (TM)\nMILITECH MK31 DEFENDER\nACTIVE SINCE 2049-08-04\nINFINITE CORE ONLINE",
-                protected: false,
-                password: null
-            },
-            "002": {
-                name: "STASON.dat",
-                content: "=== STASON DATA ===\n[CONFIDENTIAL]\nACCESS GRANTED\nSECURITY LEVEL: ALPHA\nSYSTEM OVERRIDE CODE: X7-990-0A1",
-                protected: true,
-                password: "3350"
-            },
-            "003": {
-                name: "sslDM.EXE",
-                content: "ADMIN TOOL",
-                protected: false,
-                password: null,
-                isAdminTool: true
-            }
+        let gistToken = localStorage.getItem('gist_token');
+        let gistId = localStorage.getItem('gist_id');
+        let gistFiles = {};
+
+        const systemFiles = {
+            "001": { name: "INFO.txt", content: "=== SYSTEM INFORMATION ===\nSSL // ROBCO INDUSTRIES (TM)\nMILITECH MK31 DEFENDER\nACTIVE SINCE 2049-08-04\nINFINITE CORE ONLINE", protected: false, password: null },
+            "002": { name: "STASON.dat", content: "=== STASON DATA ===\n[CONFIDENTIAL]\nACCESS GRANTED\nSECURITY LEVEL: ALPHA\nSYSTEM OVERRIDE CODE: X7-990-0A1", protected: true, password: "3350" },
+            "003": { name: "sslDM.EXE", content: "ADMIN TOOL", protected: false, password: null, isAdminTool: true }
         };
 
+        // ================== GIST FUNCTIONS ==================
+        async function loadGistFiles() {
+            if (!gistToken || !gistId) return {};
+            try {
+                const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+                    headers: { 'Authorization': `token ${gistToken}` }
+                });
+                if (!res.ok) throw new Error(`Gist load error: ${res.status}`);
+                const data = await res.json();
+                const files = {};
+                for (const [filename, fileData] of Object.entries(data.files)) {
+                    files[filename] = fileData.content || '';
+                }
+                gistFiles = files;
+                return files;
+            } catch(e) {
+                console.warn(e);
+                return {};
+            }
+        }
+
+        async function saveGistFiles(files) {
+            if (!gistToken || !gistId) throw new Error('Gist not configured');
+            const payload = { files: {} };
+            for (const [name, content] of Object.entries(files)) {
+                payload.files[name] = { content };
+            }
+            const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `token ${gistToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error(`Save error: ${res.status}`);
+            gistFiles = files;
+            return await res.json();
+        }
+
+        // ================== UTILS ==================
         function getCurrentDate() {
             const now = new Date();
             const month = (now.getMonth() + 1).toString().padStart(2, '0');
@@ -338,16 +432,15 @@
             setTimeout(() => div.remove(), 5000);
         }
 
+        // ================== USER SYNC (ADMIN) ==================
         function announceNewUser() {
             onlineUsers.add(clientId);
             channel.postMessage({ type: 'new_client', id: clientId });
         }
-
         function announceRemoveUser() {
             onlineUsers.delete(clientId);
             channel.postMessage({ type: 'remove_client', id: clientId });
         }
-
         function requestFullUserList() {
             channel.postMessage({ type: 'request_full_list', from: clientId });
         }
@@ -355,7 +448,6 @@
         channel.onmessage = (e) => {
             const data = e.data;
             if (!data) return;
-
             if (data.type === 'new_client') {
                 onlineUsers.add(data.id);
                 if (adminMode) addHistoryLine(`[ADMIN] New user connected: ${data.id}`, false);
@@ -368,9 +460,7 @@
                 channel.postMessage({ type: 'client_present', id: clientId, target: data.from });
             }
             else if (data.type === 'client_present') {
-                if (adminMode && data.target === clientId) {
-                    onlineUsers.add(data.id);
-                }
+                if (adminMode && data.target === clientId) onlineUsers.add(data.id);
             }
             else if (data.type === 'broadcast') {
                 if (data.from !== clientId) {
@@ -395,6 +485,7 @@
             }
         };
 
+        // ================== BOOT ==================
         const bootScreen = document.getElementById('bootScreen');
         const dosScreen = document.getElementById('dosScreen');
         const bootSpinner = document.getElementById('bootSpinner');
@@ -405,15 +496,16 @@
             if (bootSpinner) bootSpinner.innerText = spinnerChars[spinIdx];
         }, 150);
 
-        setTimeout(() => {
+        setTimeout(async () => {
             clearInterval(spinnerInterval);
             bootScreen.classList.add('hidden');
-            dosScreen.classList.add('active');
+            await loadGistFiles();
             initHistory();
             document.getElementById('cmdInput').focus();
             announceNewUser();
         }, 4000);
 
+        // ================== NOISE ==================
         const noiseCanvas = document.getElementById('noiseCanvas');
         let noiseCtx = noiseCanvas.getContext('2d');
         let noiseActive = true;
@@ -443,6 +535,7 @@
         resizeNoise();
         generateNoise();
 
+        // ================== HISTORY & UI ==================
         const historyContainer = document.getElementById('historyContainer');
         const cmdInput = document.getElementById('cmdInput');
         const promptSpan = document.getElementById('currentPrompt');
@@ -460,16 +553,38 @@
 
         function initHistory() {
             addHistoryLine('╔══════════════════════════════════════════════════════════╗');
-            addHistoryLine('║                         SSL                              ║');
+            addHistoryLine('║              SSL // MARKDOWN + GIST (AUTO)               ║');
             addHistoryLine('║         ROBCO INDUSTRIES (TM) TERMINAL v.INF             ║');
-            addHistoryLine('║            (C) 2049 MILITECH / ROBCO CORP.               ║');
             addHistoryLine('╚══════════════════════════════════════════════════════════╝');
             addHistoryLine('');
             addHistoryLine(`Enter today's date (m-d-y): ${getCurrentDate()}`);
             addHistoryLine('');
-            addHistoryLine('Available commands: DIR, DATE, TIME, HELP, CLS, VER');
-            addHistoryLine('  DIR <ID>  - open file (ID: 001, 002, 003)');
+            addHistoryLine('Cloud storage ready. Use DIR to list files.');
+            addHistoryLine('Commands: DIR, MD new/edit/view/list, LS, CAT, NEW, EDIT, RM');
+            addHistoryLine('Admin: sslDM.EXE (password 33419)');
             addHistoryLine('');
+        }
+
+        // ================== SYSTEM FILE OPEN ==================
+        function displaySystemFile(id) {
+            const file = systemFiles[id];
+            if (!file) return false;
+            if (file.isAdminTool) {
+                promptAdminPassword();
+                return true;
+            }
+            if (file.protected) {
+                addHistoryLine(`File "${file.name}" is password protected. Enter password:`);
+                pendingFileId = id;
+                cmdInput.dataset.mode = "password";
+                cmdInput.value = "";
+                cmdInput.focus();
+                return true;
+            }
+            addHistoryLine(`=== ${file.name} (ID: ${id}) ===`);
+            file.content.split('\n').forEach(line => addHistoryLine(line));
+            addHistoryLine('');
+            return true;
         }
 
         function promptAdminPassword() {
@@ -480,32 +595,13 @@
             cmdInput.focus();
         }
 
-        function displayFileContent(id) {
-            const file = files[id];
-            if (!file) {
-                addHistoryLine(`File ID ${id} not found.`);
-                return;
-            }
-            if (file.isAdminTool) {
-                promptAdminPassword();
-                return;
-            }
-            if (file.protected) {
-                addHistoryLine(`File "${file.name}" is password protected. Enter password:`);
-                pendingFileId = id;
-                cmdInput.dataset.mode = "password";
-                cmdInput.value = "";
-                cmdInput.focus();
-            } else {
-                addHistoryLine(`=== ${file.name} (ID: ${id}) ===`);
-                file.content.split('\n').forEach(line => addHistoryLine(line));
-                addHistoryLine('');
-            }
-        }
-
         function checkPassword(inputPass) {
             if (!pendingFileId) return;
-            const file = files[pendingFileId];
+            if (pendingFileId === 'admin_auth') {
+                checkAdminPassword(inputPass);
+                return;
+            }
+            const file = systemFiles[pendingFileId];
             if (inputPass === file.password) {
                 addHistoryLine(`Access granted. Opening ${file.name}:`);
                 addHistoryLine(`=== ${file.name} (ID: ${pendingFileId}) ===`);
@@ -516,143 +612,6 @@
             }
             pendingFileId = null;
             cmdInput.dataset.mode = "normal";
-        }
-
-        function adminHelp() {
-            addHistoryLine('Admin commands:');
-            addHistoryLine('  send_all <color> <message>   - send to all (colors: red,green,blue,yellow,magenta,cyan)');
-            addHistoryLine('  send_user <ID> <message>     - send private message');
-            addHistoryLine('  list                         - show online users');
-            addHistoryLine('  kick <ID>                    - kick user by ID');
-            addHistoryLine('  exit                         - exit admin mode');
-        }
-
-        function processAdminCommand(cmd) {
-            const parts = cmd.trim().split(/\s+/);
-            const command = parts[0].toLowerCase();
-
-            if (command === 'exit') {
-                adminMode = false;
-                promptSpan.innerText = `${currentPath}>`;
-                addHistoryLine('Exited admin mode.', false);
-                return;
-            }
-            else if (command === 'help') {
-                adminHelp();
-            }
-            else if (command === 'list') {
-                if (onlineUsers.size === 0) addHistoryLine('No users online.', false);
-                else addHistoryLine(`Online users (${onlineUsers.size}): ${Array.from(onlineUsers).join(', ')}`, false);
-            }
-            else if (command === 'send_all') {
-                if (parts.length < 3) {
-                    addHistoryLine('Usage: send_all <color> <message>', false);
-                    return;
-                }
-                const colorMap = { red: '#ff5555', green: '#55ff55', blue: '#5555ff', yellow: '#ffff55', magenta: '#ff55ff', cyan: '#55ffff' };
-                let color = parts[1].toLowerCase();
-                if (!colorMap[color]) {
-                    addHistoryLine('Invalid color. Available: red, green, blue, yellow, magenta, cyan', false);
-                    return;
-                }
-                const message = parts.slice(2).join(' ');
-                channel.postMessage({ type: 'broadcast', message, color: colorMap[color], from: clientId });
-                addHistoryLine(`[ADMIN] Broadcast sent to all (${color}): ${message}`, false);
-            }
-            else if (command === 'send_user') {
-                if (parts.length < 3) {
-                    addHistoryLine('Usage: send_user <ID> <message>', false);
-                    return;
-                }
-                const targetId = parts[1];
-                const message = parts.slice(2).join(' ');
-                channel.postMessage({ type: 'direct', targetId, message, color: '#ffaa55', from: clientId });
-                addHistoryLine(`[ADMIN] Private message sent to ${targetId}: ${message}`, false);
-            }
-            else if (command === 'kick') {
-                if (parts.length < 2) {
-                    addHistoryLine('Usage: kick <ID>', false);
-                    return;
-                }
-                const targetId = parts[1];
-                if (targetId === clientId) {
-                    addHistoryLine('[ADMIN] You cannot kick yourself.', false);
-                    return;
-                }
-                channel.postMessage({ type: 'kick', targetId, from: clientId });
-                addHistoryLine(`[ADMIN] Kicked user ${targetId}`, false);
-                onlineUsers.delete(targetId);
-            }
-            else {
-                addHistoryLine(`Unknown admin command: ${command}. Type 'help' for list.`, false);
-            }
-        }
-
-        function processCommand(cmd) {
-            const trimmed = cmd.trim();
-            if (trimmed === '') return;
-
-            if (adminMode) {
-                addHistoryLine(`ADMIN>${trimmed}`, true);
-                processAdminCommand(trimmed);
-                return;
-            }
-
-            addHistoryLine(`${currentPath}>${trimmed}`, true);
-            const parts = trimmed.split(/\s+/);
-            const command = parts[0].toLowerCase();
-
-            if (command === 'dir') {
-                if (parts.length === 1) {
-                    addHistoryLine(' Volume in drive A is SSL_VOL');
-                    addHistoryLine(' Volume Serial Number is 2E47-1901');
-                    addHistoryLine('');
-                    addHistoryLine('ID    Name           Size');
-                    addHistoryLine('---   ----           ----');
-                    for (const [id, file] of Object.entries(files)) {
-                        const size = (file.content.length + 32).toString().padStart(6, ' ');
-                        addHistoryLine(`${id}    ${file.name.padEnd(12)} ${size} bytes`);
-                    }
-                    addHistoryLine(`       ${Object.keys(files).length} File(s)         5120 bytes free`);
-                } else {
-                    const fileId = parts[1];
-                    if (/^\d{3}$/.test(fileId)) displayFileContent(fileId);
-                    else addHistoryLine(`Invalid file ID. Use three-digit number (e.g., 001).`);
-                }
-            }
-            else if (command === 'date') {
-                addHistoryLine(`Current date is ${getCurrentDate()}`);
-                addHistoryLine('Enter new date (m-d-y):');
-            }
-            else if (command === 'time') {
-                addHistoryLine(`Current time is ${getCurrentTime()}`);
-                addHistoryLine('Enter new time:');
-            }
-            else if (command === 'help') {
-                addHistoryLine('Available commands:');
-                addHistoryLine('  DIR           - list files');
-                addHistoryLine('  DIR <ID>      - open file (ID: 001, 002, 003)');
-                addHistoryLine('  DATE          - show current system date');
-                addHistoryLine('  TIME          - show current system time');
-                addHistoryLine('  CLS           - clear screen');
-                addHistoryLine('  VER           - display terminal version');
-                addHistoryLine('  HELP          - show this help');
-            }
-            else if (command === 'cls') {
-                while (historyContainer.firstChild) historyContainer.removeChild(historyContainer.firstChild);
-                addHistoryLine('╔══════════════════════════════════════════════════════════╗');
-                addHistoryLine('║                         SSL                              ║');
-                addHistoryLine('║         ROBCO INDUSTRIES (TM) TERMINAL v.INF             ║');
-                addHistoryLine('╚══════════════════════════════════════════════════════════╝');
-                addHistoryLine('');
-            }
-            else if (command === 'ver') {
-                addHistoryLine('SSL // INFINITE CORE');
-                addHistoryLine('ROBCO INDUSTRIES (TM) // ACTIVE SINCE 2049-08-04');
-            }
-            else {
-                addHistoryLine(`Bad command or file name: ${trimmed}`);
-            }
         }
 
         function checkAdminPassword(pass) {
@@ -674,9 +633,330 @@
             cmdInput.dataset.mode = "normal";
         }
 
-        // История команд (стрелки вверх/вниз)
+        // ================== ADMIN COMMANDS ==================
+        function adminHelp() {
+            addHistoryLine('Admin commands:');
+            addHistoryLine('  send_all <color> <msg>   - broadcast');
+            addHistoryLine('  send_user <ID> <msg>     - private');
+            addHistoryLine('  list                     - show users');
+            addHistoryLine('  kick <ID>                - kick user');
+            addHistoryLine('  exit                     - exit admin mode');
+        }
+
+        function processAdminCommand(cmd) {
+            const parts = cmd.trim().split(/\s+/);
+            const command = parts[0].toLowerCase();
+            if (command === 'exit') {
+                adminMode = false;
+                promptSpan.innerText = `${currentPath}>`;
+                addHistoryLine('Exited admin mode.', false);
+                return;
+            }
+            else if (command === 'help') adminHelp();
+            else if (command === 'list') {
+                if (onlineUsers.size === 0) addHistoryLine('No users online.', false);
+                else addHistoryLine(`Online users (${onlineUsers.size}): ${Array.from(onlineUsers).join(', ')}`, false);
+            }
+            else if (command === 'send_all') {
+                if (parts.length < 3) { addHistoryLine('Usage: send_all <color> <message>', false); return; }
+                const colorMap = { red: '#ff5555', green: '#55ff55', blue: '#5555ff', yellow: '#ffff55', magenta: '#ff55ff', cyan: '#55ffff' };
+                let color = parts[1].toLowerCase();
+                if (!colorMap[color]) { addHistoryLine('Invalid color.', false); return; }
+                const message = parts.slice(2).join(' ');
+                channel.postMessage({ type: 'broadcast', message, color: colorMap[color], from: clientId });
+                addHistoryLine(`[ADMIN] Broadcast sent to all (${color}): ${message}`, false);
+            }
+            else if (command === 'send_user') {
+                if (parts.length < 3) { addHistoryLine('Usage: send_user <ID> <message>', false); return; }
+                const targetId = parts[1];
+                const message = parts.slice(2).join(' ');
+                channel.postMessage({ type: 'direct', targetId, message, color: '#ffaa55', from: clientId });
+                addHistoryLine(`[ADMIN] Private message sent to ${targetId}: ${message}`, false);
+            }
+            else if (command === 'kick') {
+                if (parts.length < 2) { addHistoryLine('Usage: kick <ID>', false); return; }
+                const targetId = parts[1];
+                if (targetId === clientId) { addHistoryLine('[ADMIN] You cannot kick yourself.', false); return; }
+                channel.postMessage({ type: 'kick', targetId, from: clientId });
+                addHistoryLine(`[ADMIN] Kicked user ${targetId}`, false);
+                onlineUsers.delete(targetId);
+            }
+            else addHistoryLine(`Unknown admin command: ${command}.`, false);
+        }
+
+        // ================== GIST COMMANDS (LEGACY) ==================
+        async function listGistFiles() {
+            if (!gistToken || !gistId) {
+                addHistoryLine('Gist not configured.');
+                return;
+            }
+            await loadGistFiles();
+            if (Object.keys(gistFiles).length === 0) addHistoryLine('No files in gist.');
+            else {
+                addHistoryLine('Gist files:');
+                for (const name of Object.keys(gistFiles)) addHistoryLine(`  ${name}`);
+            }
+        }
+
+        async function catGistFile(filename) {
+            if (!gistToken || !gistId) { addHistoryLine('Gist not configured.'); return; }
+            await loadGistFiles();
+            const content = gistFiles[filename];
+            if (content === undefined) { addHistoryLine(`File "${filename}" not found.`); return; }
+            addHistoryLine(`=== ${filename} ===`);
+            content.split('\n').forEach(line => addHistoryLine(line));
+            addHistoryLine('');
+        }
+
+        async function newGistFile(filename) {
+            if (!filename) { addHistoryLine('Usage: new <filename>'); return; }
+            if (!gistToken || !gistId) { addHistoryLine('Gist not configured.'); return; }
+            addHistoryLine(`Enter content for ${filename} (end with a line containing only '.'):`);
+            let lines = [];
+            pendingFileId = { type: 'gist_new', filename };
+            cmdInput.dataset.mode = "multiline";
+            cmdInput.value = "";
+            cmdInput.focus();
+            window._multilineCallback = async (content) => {
+                gistFiles[filename] = content;
+                await saveGistFiles(gistFiles);
+                addHistoryLine(`File ${filename} created.`);
+                pendingFileId = null;
+                delete window._multilineCallback;
+            };
+        }
+
+        async function editGistFile(filename) {
+            if (!filename) { addHistoryLine('Usage: edit <filename>'); return; }
+            if (!gistToken || !gistId) { addHistoryLine('Gist not configured.'); return; }
+            await loadGistFiles();
+            const oldContent = gistFiles[filename];
+            if (oldContent === undefined) { addHistoryLine(`File "${filename}" not found.`); return; }
+            addHistoryLine(`Editing ${filename}. Enter new content (end with '.'):`);
+            pendingFileId = { type: 'gist_edit', filename };
+            cmdInput.dataset.mode = "multiline";
+            cmdInput.value = "";
+            cmdInput.focus();
+            window._multilineCallback = async (content) => {
+                gistFiles[filename] = content;
+                await saveGistFiles(gistFiles);
+                addHistoryLine(`File ${filename} updated.`);
+                pendingFileId = null;
+                delete window._multilineCallback;
+            };
+        }
+
+        async function rmGistFile(filename) {
+            if (!filename) { addHistoryLine('Usage: rm <filename>'); return; }
+            if (!gistToken || !gistId) { addHistoryLine('Gist not configured.'); return; }
+            await loadGistFiles();
+            if (!gistFiles[filename]) { addHistoryLine(`File not found.`); return; }
+            delete gistFiles[filename];
+            await saveGistFiles(gistFiles);
+            addHistoryLine(`File ${filename} deleted.`);
+        }
+
+        // ================== MARKDOWN EDITOR ==================
+        const mdEditor = document.getElementById('mdEditor');
+        const mdInputArea = document.getElementById('mdInput');
+        const mdPreview = document.getElementById('mdPreview');
+        const mdFileNameSpan = document.getElementById('mdFileName');
+        let currentMDFile = null;
+
+        function renderMarkdown(text) {
+            return text
+                .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+                .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+                .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+                .replace(/\*\*(.*?)\*\*/gim, '<b>$1</b>')
+                .replace(/\*(.*?)\*/gim, '<i>$1</i>')
+                .replace(/`(.*?)`/gim, '<code>$1</code>')
+                .replace(/\n/gim, '<br>');
+        }
+
+        mdInputArea.addEventListener('input', () => {
+            mdPreview.innerHTML = renderMarkdown(mdInputArea.value);
+        });
+
+        async function openMDEditor(filename, content = '') {
+            dosScreen.style.display = 'none';
+            mdEditor.style.display = 'flex';
+            currentMDFile = filename;
+            mdFileNameSpan.innerText = filename;
+            mdInputArea.value = content;
+            mdPreview.innerHTML = renderMarkdown(content);
+            mdInputArea.focus();
+        }
+
+        function closeMDEditor() {
+            mdEditor.style.display = 'none';
+            dosScreen.style.display = 'flex';
+            cmdInput.focus();
+        }
+
+        async function saveMDFile() {
+            if (!currentMDFile) return;
+            gistFiles[currentMDFile] = mdInputArea.value;
+            try {
+                await saveGistFiles(gistFiles);
+                showNotification(`Saved: ${currentMDFile}`);
+            } catch(e) {
+                showNotification(`Error: ${e.message}`, '#ff5555');
+            }
+        }
+
+        async function handleMDCommand(parts) {
+            const sub = parts[1];
+            const filename = parts[2];
+            if (!gistToken || !gistId) {
+                addHistoryLine('Gist not configured.');
+                return;
+            }
+            await loadGistFiles();
+            if (sub === 'new') {
+                if (!filename || !filename.endsWith('.md')) {
+                    addHistoryLine('Usage: md new <file.md>');
+                    return;
+                }
+                openMDEditor(filename, '# New File\n\nWrite your content here.');
+            }
+            else if (sub === 'edit') {
+                if (!filename) { addHistoryLine('Usage: md edit <file.md>'); return; }
+                const content = gistFiles[filename];
+                if (!content) { addHistoryLine('File not found'); return; }
+                openMDEditor(filename, content);
+            }
+            else if (sub === 'view') {
+                if (!filename) { addHistoryLine('Usage: md view <file.md>'); return; }
+                const content = gistFiles[filename];
+                if (!content) { addHistoryLine('File not found'); return; }
+                addHistoryLine(`=== ${filename} ===`);
+                content.split('\n').forEach(l => addHistoryLine(l));
+            }
+            else if (sub === 'list') {
+                const mdFiles = Object.keys(gistFiles).filter(f => f.endsWith('.md'));
+                if (mdFiles.length === 0) addHistoryLine('No .md files.');
+                else mdFiles.forEach(f => addHistoryLine(f));
+            }
+            else addHistoryLine('md commands: new/edit/view/list');
+        }
+
+        // ================== MAIN COMMAND PROCESSOR ==================
+        async function processCommand(cmd) {
+            const trimmed = cmd.trim();
+            if (trimmed === '') return;
+
+            if (adminMode) {
+                addHistoryLine(`ADMIN>${trimmed}`, true);
+                processAdminCommand(trimmed);
+                return;
+            }
+
+            addHistoryLine(`${currentPath}>${trimmed}`, true);
+            const parts = trimmed.split(/\s+/);
+            const command = parts[0].toLowerCase();
+
+            if (command === 'dir') {
+                if (parts.length === 1) {
+                    addHistoryLine(' Volume in drive A is SSL_VOL');
+                    addHistoryLine(' Volume Serial Number is 2E47-1901');
+                    addHistoryLine('');
+                    addHistoryLine('NAME            TYPE        SIZE');
+                    addHistoryLine('--------------- ----------- --------');
+                    for (const [id, file] of Object.entries(systemFiles)) {
+                        const size = file.content.length.toString().padStart(6, ' ');
+                        addHistoryLine(`${id.padEnd(15)} SYS         ${size}b`);
+                    }
+                    if (gistToken && gistId) {
+                        await loadGistFiles();
+                        for (const [name, content] of Object.entries(gistFiles)) {
+                            const size = (content?.length || 0).toString().padStart(6, ' ');
+                            const type = name.endsWith('.md') ? 'MARKDOWN' : 'CLOUD';
+                            addHistoryLine(`${name.padEnd(15)} ${type.padEnd(11)} ${size}b`);
+                        }
+                    }
+                    addHistoryLine('');
+                } else {
+                    const target = parts[1];
+                    if (/^\d{3}$/.test(target)) {
+                        displaySystemFile(target);
+                        return;
+                    }
+                    if (gistFiles[target] !== undefined) {
+                        const content = gistFiles[target];
+                        addHistoryLine(`=== ${target} ===`);
+                        if (target.endsWith('.md')) {
+                            content.split('\n').forEach(line => addHistoryLine(line));
+                        } else {
+                            content.split('\n').forEach(line => addHistoryLine(line));
+                        }
+                        addHistoryLine('');
+                        return;
+                    }
+                    addHistoryLine(`File not found: ${target}`);
+                }
+            }
+            else if (command === 'ls') { await listGistFiles(); }
+            else if (command === 'cat') {
+                if (parts.length < 2) addHistoryLine('Usage: cat <filename>');
+                else await catGistFile(parts[1]);
+            }
+            else if (command === 'new') {
+                if (parts.length < 2) addHistoryLine('Usage: new <filename>');
+                else await newGistFile(parts[1]);
+            }
+            else if (command === 'edit') {
+                if (parts.length < 2) addHistoryLine('Usage: edit <filename>');
+                else await editGistFile(parts[1]);
+            }
+            else if (command === 'rm') {
+                if (parts.length < 2) addHistoryLine('Usage: rm <filename>');
+                else await rmGistFile(parts[1]);
+            }
+            else if (command === 'md') {
+                await handleMDCommand(parts);
+            }
+            else if (command === 'date') {
+                addHistoryLine(`Current date is ${getCurrentDate()}`);
+                addHistoryLine('Enter new date (m-d-y):');
+            }
+            else if (command === 'time') {
+                addHistoryLine(`Current time is ${getCurrentTime()}`);
+                addHistoryLine('Enter new time:');
+            }
+            else if (command === 'help') {
+                addHistoryLine('Available commands:');
+                addHistoryLine('  DIR                     - list system + cloud files');
+                addHistoryLine('  DIR <ID|filename>       - open file');
+                addHistoryLine('  LS, CAT, NEW, EDIT, RM  - cloud file ops');
+                addHistoryLine('  MD new/edit/view/list   - markdown editor');
+                addHistoryLine('  DATE/TIME/CLS/VER/HELP  - standard');
+                addHistoryLine('  sslDM.EXE               - admin panel (password 33419)');
+            }
+            else if (command === 'cls') {
+                while (historyContainer.firstChild) historyContainer.removeChild(historyContainer.firstChild);
+                addHistoryLine('╔══════════════════════════════════════════════════════════╗');
+                addHistoryLine('║              SSL // MARKDOWN + GIST (AUTO)               ║');
+                addHistoryLine('║         ROBCO INDUSTRIES (TM) TERMINAL v.INF             ║');
+                addHistoryLine('╚══════════════════════════════════════════════════════════╝');
+                addHistoryLine('');
+            }
+            else if (command === 'ver') {
+                addHistoryLine('SSL // MARKDOWN EDITOR + GIST CLOUD');
+                addHistoryLine('GitHub Gist integration active');
+            }
+            else if (command === 'ssldm.exe' || command === 'ssldm') {
+                promptAdminPassword();
+            }
+            else {
+                addHistoryLine(`Bad command or file name: ${trimmed}`);
+            }
+        }
+
+        // ================== COMMAND HISTORY & MULTILINE ==================
         let commandHistory = [];
         let historyIndex = -1;
+        let multilineBuffer = [];
 
         cmdInput.addEventListener('keydown', (e) => {
             if (e.key === 'ArrowUp') {
@@ -698,10 +978,23 @@
                 e.preventDefault();
             }
             else if (e.key === 'Enter') {
-                const value = cmdInput.value.trim();
-                if (value !== "") {
-                    commandHistory.push(value);
+                const value = cmdInput.value;
+                if (cmdInput.dataset.mode === "multiline") {
+                    if (value === '.') {
+                        const content = multilineBuffer.join('\n');
+                        if (window._multilineCallback) window._multilineCallback(content);
+                        cmdInput.dataset.mode = "normal";
+                        multilineBuffer = [];
+                        cmdInput.value = "";
+                    } else {
+                        multilineBuffer.push(value);
+                        cmdInput.value = "";
+                    }
+                    e.preventDefault();
+                    return;
                 }
+
+                if (value.trim() !== "") commandHistory.push(value.trim());
                 historyIndex = -1;
 
                 if (cmdInput.dataset.mode === "password") {
@@ -719,8 +1012,19 @@
             }
         });
 
+        mdInputArea.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                saveMDFile();
+            }
+            if (e.key === 'Escape') {
+                closeMDEditor();
+            }
+        });
+
         document.querySelector('.terminal').addEventListener('click', () => {
-            cmdInput.focus();
+            if (mdEditor.style.display === 'flex') mdInputArea.focus();
+            else cmdInput.focus();
         });
 
         window.addEventListener('beforeunload', () => {
