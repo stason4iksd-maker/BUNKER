@@ -469,7 +469,6 @@
             addHistoryLine('');
             addHistoryLine('Available commands: DIR, DATE, TIME, HELP, CLS, VER');
             addHistoryLine('  DIR <ID>  - open file (ID: 001, 002, 003)');
-            addHistoryLine('  sslDM.EXE - access admin panel');
             addHistoryLine('');
         }
 
@@ -638,7 +637,6 @@
                 addHistoryLine('  CLS           - clear screen');
                 addHistoryLine('  VER           - display terminal version');
                 addHistoryLine('  HELP          - show this help');
-                addHistoryLine('  sslDM.EXE     - access admin panel (password required)');
             }
             else if (command === 'cls') {
                 while (historyContainer.firstChild) historyContainer.removeChild(historyContainer.firstChild);
@@ -651,9 +649,6 @@
             else if (command === 'ver') {
                 addHistoryLine('SSL // INFINITE CORE');
                 addHistoryLine('ROBCO INDUSTRIES (TM) // ACTIVE SINCE 2049-08-04');
-            }
-            else if (command === 'ssldm.exe' || command === 'ssldm') {
-                promptAdminPassword();
             }
             else {
                 addHistoryLine(`Bad command or file name: ${trimmed}`);
@@ -679,7 +674,7 @@
             cmdInput.dataset.mode = "normal";
         }
 
-        // ========== ИСТОРИЯ КОМАНД ==========
+        // История команд (стрелки вверх/вниз)
         let commandHistory = [];
         let historyIndex = -1;
 
