@@ -252,6 +252,7 @@
             100% { opacity: 0; visibility: hidden; transform: translateX(20px); }
         }
 
+        /* Markdown редактор */
         #mdEditor {
             display: none;
             flex-direction: column;
@@ -315,6 +316,81 @@
         .save-btn:hover {
             background: #1a4a1a;
         }
+
+        /* Модальное окно для просмотра Markdown */
+        .markdown-viewer {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(5px);
+            z-index: 30000;
+            justify-content: center;
+            align-items: center;
+            font-family: monospace;
+        }
+        .markdown-viewer.active {
+            display: flex;
+        }
+        .viewer-content {
+            background: #020a02;
+            border: 2px solid #3eff7e;
+            border-radius: 16px;
+            width: 80%;
+            max-width: 900px;
+            height: 80%;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
+        }
+        .viewer-header {
+            background: #041104;
+            padding: 10px 15px;
+            border-bottom: 1px solid #2e8b57;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            color: #b0ffb0;
+        }
+        .viewer-header button {
+            background: #0a2a0a;
+            border: 1px solid #3eff7e;
+            color: #3eff7e;
+            font-family: monospace;
+            font-size: 1.2rem;
+            padding: 2px 10px;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+        .viewer-header button:hover {
+            background: #1a4a1a;
+        }
+        .viewer-body {
+            flex: 1;
+            overflow: auto;
+            padding: 20px;
+            color: #9eff9e;
+            font-family: monospace;
+        }
+        .viewer-body h1, .viewer-body h2, .viewer-body h3 {
+            color: #b0ffb0;
+            margin: 0.5rem 0;
+        }
+        .viewer-body code {
+            background: #0a2a0a;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+        .viewer-body pre {
+            background: #0a1a0a;
+            padding: 10px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
     </style>
 </head>
 <body>
@@ -342,6 +418,7 @@
                 </div>
             </div>
 
+            <!-- Редактор -->
             <div id="mdEditor">
                 <div class="editor-toolbar">
                     <span>📝 EDITOR: <span id="mdFileName">untitled.md</span></span>
@@ -356,8 +433,19 @@
         </div>
     </div>
 
+    <!-- Модальное окно для просмотра Markdown -->
+    <div id="markdownViewer" class="markdown-viewer">
+        <div class="viewer-content">
+            <div class="viewer-header">
+                <span id="viewerTitle">Markdown Preview</span>
+                <button id="closeViewerBtn">✖</button>
+            </div>
+            <div id="viewerBody" class="viewer-body"></div>
+        </div>
+    </div>
+
     <script>
-        // ================== ТОКЕН (НОВЫЙ) ==================
+        // ================== ТОКЕН ==================
         const DEFAULT_TOKEN = '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';
         const DEFAULT_GIST_ID = '03360f2ddda0253c68766cea35107a82';
 
@@ -872,6 +960,30 @@
             saveMDFile();
         });
 
+        // ================== MARKDOWN VIEWER (отдельное окно) ==================
+        const viewer = document.getElementById('markdownViewer');
+        const viewerTitle = document.getElementById('viewerTitle');
+        const viewerBody = document.getElementById('viewerBody');
+        const closeViewerBtn = document.getElementById('closeViewerBtn');
+
+        function showMarkdownViewer(filename, content) {
+            viewerTitle.innerText = `📄 ${filename}`;
+            viewerBody.innerHTML = renderMarkdown(content);
+            viewer.classList.add('active');
+        }
+
+        function closeMarkdownViewer() {
+            viewer.classList.remove('active');
+        }
+
+        closeViewerBtn.addEventListener('click', closeMarkdownViewer);
+        // Закрытие по ESC
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && viewer.classList.contains('active')) {
+                closeMarkdownViewer();
+            }
+        });
+
         // ================== USER COMMANDS ==================
         async function userCreateFile(filename) {
             if (!filename) {
@@ -964,10 +1076,14 @@
                         }
                         await loadGistFiles();
                         if (gistFiles[target] !== undefined) {
-                            // .md файлы показываем в режиме просмотра (как текст)
-                            addHistoryLine(`=== ${target} ===`);
-                            gistFiles[target].split('\n').forEach(line => addHistoryLine(line));
-                            addHistoryLine('');
+                            // Для .md файлов открываем модальное окно просмотра
+                            if (target.endsWith('.md')) {
+                                showMarkdownViewer(target, gistFiles[target]);
+                            } else {
+                                addHistoryLine(`=== ${target} ===`);
+                                gistFiles[target].split('\n').forEach(line => addHistoryLine(line));
+                                addHistoryLine('');
+                            }
                             return;
                         }
                         addHistoryLine(`File not found: ${target}`);
@@ -977,7 +1093,7 @@
             else if (command === 'help') {
                 addHistoryLine('Available commands:');
                 addHistoryLine('  DIR                     - list system + cloud files');
-                addHistoryLine('  DIR <ID|filename>       - view file content (Markdown as text)');
+                addHistoryLine('  DIR <ID|filename>       - view file (Markdown opens in separate window)');
                 addHistoryLine('  DIR NEW [filename.md]   - create new Markdown file');
                 addHistoryLine('  DIR EDIT <filename.md>  - edit Markdown file');
                 addHistoryLine('  CLS                     - clear screen');
