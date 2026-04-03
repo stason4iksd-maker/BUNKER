@@ -262,246 +262,312 @@
         </div>
     </div>
 
-    <script>
-        const files = {
-            "001": {
-                name: "INFO.txt",
-                content: "=== SYSTEM INFORMATION ===\nTERMLINK PROTOCOL v.INF\nROBCO INDUSTRIES (TM)\nMILITECH MK31 DEFENDER\nACTIVE SINCE 2049-08-04\nINFINITE CORE ONLINE",
-                protected: false,
-                password: null
-            },
-            "002": {
-                name: "STASON.dat",
-                content: "=== STASON DATA ===\n[CONFIDENTIAL]\nACCESS GRANTED\nSECURITY LEVEL: ALPHA\nSYSTEM OVERRIDE CODE: X7-990-0A1",
-                protected: true,
-                password: "3350"
+   <script>
+/* ================== BROADCAST + USERS ================== */
+const channel = new BroadcastChannel('ssl_admin_channel');
+const clientId = 'id_' + Math.random().toString(36).substr(2, 5);
+
+let usersList = {};
+let adminMode = false;
+
+/* регистрация */
+function register() {
+    usersList[clientId] = true;
+    channel.postMessage({ type: 'announce', id: clientId });
+}
+
+/* выход */
+function unregister() {
+    channel.postMessage({ type: 'leave', id: clientId });
+}
+
+/* ================== NOTIFY ================== */
+function showNotification(message, color = '#3eff7e') {
+    const div = document.createElement('div');
+    div.className = 'notification';
+    div.style.borderLeftColor = color;
+    div.style.color = color;
+    div.innerText = message;
+    document.body.appendChild(div);
+    setTimeout(() => div.remove(), 5000);
+}
+
+/* ================== CHANNEL ================== */
+channel.onmessage = (e) => {
+    const data = e.data;
+    if (!data) return;
+
+    switch (data.type) {
+
+        case 'announce':
+            usersList[data.id] = true;
+
+            if (data.id !== clientId) {
+                channel.postMessage({ type: 'announce', id: clientId });
             }
-        };
+        break;
 
-        function getCurrentDate() {
-            const now = new Date();
-            const month = (now.getMonth() + 1).toString().padStart(2, '0');
-            const day = now.getDate().toString().padStart(2, '0');
-            const year = now.getFullYear().toString().slice(-2);
-            return `${month}-${day}-${year}`;
-        }
+        case 'leave':
+            delete usersList[data.id];
+        break;
 
-        function getCurrentTime() {
-            const now = new Date();
-            const hours = now.getHours().toString().padStart(2, '0');
-            const minutes = now.getMinutes().toString().padStart(2, '0');
-            const seconds = now.getSeconds().toString().padStart(2, '0');
-            return `${hours}:${minutes}:${seconds}`;
-        }
-
-        const bootScreen = document.getElementById('bootScreen');
-        const dosScreen = document.getElementById('dosScreen');
-        const bootSpinner = document.getElementById('bootSpinner');
-        let spinIdx = 0;
-        const spinnerChars = ["l", "/", "-", "\\"];
-        const spinnerInterval = setInterval(() => {
-            spinIdx = (spinIdx + 1) % spinnerChars.length;
-            if (bootSpinner) bootSpinner.innerText = spinnerChars[spinIdx];
-        }, 150);
-
-        setTimeout(() => {
-            clearInterval(spinnerInterval);
-            bootScreen.classList.add('hidden');
-            dosScreen.classList.add('active');
-            initHistory();
-            document.getElementById('cmdInput').focus();
-        }, 4000);
-
-        const noiseCanvas = document.getElementById('noiseCanvas');
-        let noiseCtx = noiseCanvas.getContext('2d');
-        let noiseActive = true;
-
-        function resizeNoise() {
-            noiseCanvas.width = window.innerWidth;
-            noiseCanvas.height = window.innerHeight;
-        }
-
-        function generateNoise() {
-            if (!noiseActive) {
-                if (noiseCtx) noiseCtx.clearRect(0, 0, noiseCanvas.width, noiseCanvas.height);
-                requestAnimationFrame(generateNoise);
-                return;
+        case 'broadcast':
+            if (data.from !== clientId) {
+                showNotification(data.message, data.color);
+                addHistoryLine(`[SERVER] ${data.message}`);
             }
-            const w = noiseCanvas.width, h = noiseCanvas.height;
-            const imgData = noiseCtx.createImageData(w, h);
-            for (let i = 0; i < imgData.data.length; i += 4) {
-                const val = Math.random() * 80 + 30;
-                imgData.data[i] = val - 20;
-                imgData.data[i+1] = val + 40;
-                imgData.data[i+2] = val - 30;
-                imgData.data[i+3] = 90 + Math.random() * 70;
+        break;
+
+        case 'direct':
+            if (data.to === clientId) {
+                showNotification(data.message, '#55ffff');
+                addHistoryLine(`[PRIVATE] ${data.message}`);
             }
-            noiseCtx.putImageData(imgData, 0, 0);
-            requestAnimationFrame(generateNoise);
-        }
+        break;
 
-        window.addEventListener('resize', () => resizeNoise());
-        resizeNoise();
-        generateNoise();
-
-        const historyContainer = document.getElementById('historyContainer');
-        const cmdInput = document.getElementById('cmdInput');
-        const promptSpan = document.getElementById('currentPrompt');
-        let currentPath = 'A';
-
-        function addHistoryLine(text, isCommand = false) {
-            const line = document.createElement('div');
-            line.className = 'history-line';
-            line.style.color = isCommand ? '#b0ffb0' : '#9eff9e';
-            line.innerText = text;
-            historyContainer.appendChild(line);
-            historyContainer.scrollTop = historyContainer.scrollHeight;
-        }
-
-        function initHistory() {
-            addHistoryLine('╔══════════════════════════════════════════════════════════╗');
-            addHistoryLine('║              TERMLINK PROTOCOL ACTIVE                    ║');
-            addHistoryLine('║         ROBCO INDUSTRIES (TM) TERMINAL v.INF             ║');
-            addHistoryLine('║            (C) 2049 MILITECH / ROBCO CORP.               ║');
-            addHistoryLine('╚══════════════════════════════════════════════════════════╝');
-            addHistoryLine('');
-            addHistoryLine(`Enter today's date (m-d-y): ${getCurrentDate()}`);
-            addHistoryLine('');
-            addHistoryLine('Available commands: DIR, DATE, TIME, HELP, CLS, VER');
-            addHistoryLine('  DIR <ID>  - open file (ID: 001, 002)');
-            addHistoryLine('');
-        }
-
-        let pendingFileId = null;
-
-        function displayFileContent(id) {
-            const file = files[id];
-            if (!file) {
-                addHistoryLine(`File ID ${id} not found.`);
-                return;
+        case 'kick':
+            if (data.to === clientId) {
+                document.body.innerHTML = `
+                <div style="color:#3eff7e;background:#000;height:100vh;display:flex;justify-content:center;align-items:center;font-family:monospace;font-size:2rem;text-align:center;">
+                    SESSION TERMINATED<br>
+                    Reload page to reconnect.
+                </div>`;
             }
-            if (file.protected) {
-                addHistoryLine(`File "${file.name}" is password protected. Enter password:`);
-                pendingFileId = id;
-                cmdInput.dataset.mode = "password";
-                cmdInput.value = "";
-                cmdInput.focus();
+        break;
+    }
+};
+
+window.addEventListener('beforeunload', unregister);
+
+/* ================== FILE SYSTEM ================== */
+const files = {
+    "001": {
+        name: "INFO.txt",
+        content: `=== SYSTEM INFORMATION ===
+SSL расшифровка Shadow Since Laboratory
+ROBCO INDUSTRIES (TM)
+MILITECH MK31 DEFENDER
+ACTIVE SINCE 2049-08-04
+INFINITE CORE ONLINE`
+    },
+    "002": {
+        name: "STASON.dat",
+        password: "3350",
+        content: `=== STASON DATA ===
+[CONFIDENTIAL]
+ACCESS GRANTED
+SECURITY LEVEL: ALPHA
+SYSTEM OVERRIDE CODE: X7-990-0A1`
+    }
+};
+
+/* ================== TERMINAL ================== */
+const historyContainer = document.getElementById('historyContainer');
+const cmdInput = document.getElementById('cmdInput');
+const promptSpan = document.getElementById('currentPrompt');
+
+let pendingPassword = null;
+
+/* ================== HISTORY (↑ ↓) ================== */
+let commandHistory = [];
+let historyIndex = -1;
+
+cmdInput.addEventListener('keydown', (e) => {
+
+    if (e.key === 'ArrowUp') {
+        if (commandHistory.length === 0) return;
+        historyIndex = Math.max(0, historyIndex - 1);
+        cmdInput.value = commandHistory[historyIndex];
+        e.preventDefault();
+    }
+
+    if (e.key === 'ArrowDown') {
+        if (commandHistory.length === 0) return;
+        historyIndex = Math.min(commandHistory.length, historyIndex + 1);
+
+        if (historyIndex === commandHistory.length) {
+            cmdInput.value = '';
+        } else {
+            cmdInput.value = commandHistory[historyIndex];
+        }
+        e.preventDefault();
+    }
+
+    if (e.key === 'Enter') {
+        const cmd = cmdInput.value.trim();
+        if (cmd !== "") {
+            commandHistory.push(cmd);
+            historyIndex = commandHistory.length;
+        }
+
+        handleCommand(cmd);
+        cmdInput.value = "";
+    }
+});
+
+/* ================== HELPERS ================== */
+function addHistoryLine(text) {
+    const div = document.createElement('div');
+    div.className = 'history-line';
+    div.innerText = text;
+    historyContainer.appendChild(div);
+    historyContainer.scrollTop = historyContainer.scrollHeight;
+}
+
+function getDate() {
+    const d = new Date();
+    return `${(d.getMonth()+1)}-${d.getDate()}-${d.getFullYear().toString().slice(-2)}`;
+}
+
+function getTime() {
+    return new Date().toLocaleTimeString();
+}
+
+/* ================== INIT ================== */
+function init() {
+    addHistoryLine("╔══════════════════════════════════════════════════════════╗");
+    addHistoryLine("║        SSL расшифровка Shadow Since Laboratory          ║");
+    addHistoryLine("║         ROBCO INDUSTRIES (TM) TERMINAL v.INF             ║");
+    addHistoryLine("╚══════════════════════════════════════════════════════════╝");
+    addHistoryLine("");
+    addHistoryLine(`Enter today's date (m-d-y): ${getDate()}`);
+    addHistoryLine("");
+}
+
+/* ================== COMMAND HANDLER ================== */
+function handleCommand(cmd) {
+
+    if (pendingPassword) {
+        if (pendingPassword === "admin") {
+            if (cmd === "33419") {
+                adminMode = true;
+                promptSpan.innerText = "ADMIN>";
+                addHistoryLine("ACCESS GRANTED");
+            } else addHistoryLine("ACCESS DENIED");
+        } else {
+            if (cmd === files[pendingPassword].password) {
+                addHistoryLine(files[pendingPassword].content);
+            } else addHistoryLine("ACCESS DENIED");
+        }
+        pendingPassword = null;
+        return;
+    }
+
+    addHistoryLine(`${promptSpan.innerText} ${cmd}`);
+
+    const parts = cmd.split(" ");
+
+    switch(parts[0].toLowerCase()) {
+
+        case "dir":
+            if (!parts[1]) {
+                for (let id in files) {
+                    let size = files[id].content.length;
+                    addHistoryLine(`${id}  ${files[id].name}  ${size}B`);
+                }
             } else {
-                addHistoryLine(`=== ${file.name} (ID: ${id}) ===`);
-                file.content.split('\n').forEach(line => addHistoryLine(line));
-                addHistoryLine('');
-            }
-        }
+                let f = files[parts[1]];
+                if (!f) return addHistoryLine("FILE NOT FOUND");
 
-        function checkPassword(inputPass) {
-            if (!pendingFileId) return;
-            const file = files[pendingFileId];
-            if (inputPass === file.password) {
-                addHistoryLine(`Access granted. Opening ${file.name}:`);
-                addHistoryLine(`=== ${file.name} (ID: ${pendingFileId}) ===`);
-                file.content.split('\n').forEach(line => addHistoryLine(line));
-                addHistoryLine('');
-            } else {
-                addHistoryLine(`Access denied. Incorrect password for ${file.name}.`);
-            }
-            pendingFileId = null;
-            cmdInput.dataset.mode = "normal";
-        }
-
-        function processCommand(cmd) {
-            const trimmed = cmd.trim();
-            if (trimmed === '') return;
-
-            addHistoryLine(`${currentPath}>${trimmed}`, true);
-
-            const parts = trimmed.split(/\s+/);
-            const command = parts[0].toLowerCase();
-
-            if (command === 'dir') {
-                if (parts.length === 1) {
-                    addHistoryLine(' Volume in drive A is TERMLINK_VOL');
-                    addHistoryLine(' Volume Serial Number is 2E47-1901');
-                    addHistoryLine('');
-                    addHistoryLine('ID    Name           Size');
-                    addHistoryLine('---   ----           ----');
-                    for (const [id, file] of Object.entries(files)) {
-                        const size = (file.content.length + 32).toString().padStart(6, ' ');
-                        addHistoryLine(`${id}    ${file.name.padEnd(12)} ${size} bytes`);
-                    }
-                    addHistoryLine(`       ${Object.keys(files).length} File(s)         5120 bytes free`);
+                if (f.password) {
+                    pendingPassword = parts[1];
+                    addHistoryLine("ENTER PASSWORD:");
                 } else {
-                    const fileId = parts[1];
-                    if (/^\d{3}$/.test(fileId)) {
-                        displayFileContent(fileId);
-                    } else {
-                        addHistoryLine(`Invalid file ID. Use three-digit number (e.g., 001).`);
-                    }
+                    addHistoryLine(f.content);
                 }
             }
-            else if (command === 'date') {
-                addHistoryLine(`Current date is ${getCurrentDate()}`);
-                addHistoryLine('Enter new date (m-d-y):');
-            }
-            else if (command === 'time') {
-                addHistoryLine(`Current time is ${getCurrentTime()}`);
-                addHistoryLine('Enter new time:');
-            }
-            else if (command === 'help') {
-                addHistoryLine('Available commands:');
-                addHistoryLine('  DIR           - list files');
-                addHistoryLine('  DIR <ID>      - open file (ID: 001, 002)');
-                addHistoryLine('  DATE          - show current system date');
-                addHistoryLine('  TIME          - show current system time');
-                addHistoryLine('  CLS           - clear screen');
-                addHistoryLine('  VER           - display terminal version');
-                addHistoryLine('  HELP          - show this help');
-            }
-            else if (command === 'cls') {
-                while (historyContainer.firstChild) historyContainer.removeChild(historyContainer.firstChild);
-                addHistoryLine('╔══════════════════════════════════════════════════════════╗');
-                addHistoryLine('║              TERMLINK PROTOCOL ACTIVE                    ║');
-                addHistoryLine('║         ROBCO INDUSTRIES (TM) TERMINAL v.INF             ║');
-                addHistoryLine('╚══════════════════════════════════════════════════════════╝');
-                addHistoryLine('');
-            }
-            else if (command === 'ver') {
-                addHistoryLine('TERMLINK PROTOCOL v.INF // ROBCO INDUSTRIES (TM)');
-                addHistoryLine('ACTIVE SINCE 2049-08-04 // INFINITE CORE');
-            }
-            else {
-                addHistoryLine(`Bad command or file name: ${trimmed}`);
-            }
-        }
+        break;
 
-        cmdInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                const value = cmdInput.value;
-                if (cmdInput.dataset.mode === "password") {
-                    checkPassword(value);
-                    cmdInput.dataset.mode = "normal";
-                    cmdInput.value = "";
-                } else {
-                    processCommand(value);
-                    cmdInput.value = "";
-                }
+        case "date":
+            addHistoryLine(getDate());
+        break;
+
+        case "time":
+            addHistoryLine(getTime());
+        break;
+
+        case "cls":
+            historyContainer.innerHTML = "";
+        break;
+
+        case "ver":
+            addHistoryLine("TERMINAL v.INF");
+        break;
+
+        case "help":
+            if (adminMode) {
+                addHistoryLine("ADMIN COMMANDS:");
+                addHistoryLine("list, send_all, send_user, kick, exit");
+            } else {
+                addHistoryLine("DIR, DATE, TIME, HELP, CLS, VER, sslDM.EXE");
             }
-        });
+        break;
 
-        document.querySelector('.terminal').addEventListener('click', () => {
-            cmdInput.focus();
-        });
+        case "ssldm.exe":
+            pendingPassword = "admin";
+            addHistoryLine("ENTER ADMIN PASSWORD:");
+        break;
 
-        const convexDiv = document.getElementById('crtConvex');
-        let breathDirection = 1;
-        let breathValue = 0;
-        setInterval(() => {
-            breathValue += 0.02 * breathDirection;
-            if (breathValue > 1.2) breathDirection = -1;
-            if (breathValue < -0.2) breathDirection = 1;
-            const rotateY = 0.5 + breathValue * 0.15;
-            const rotateX = 2 + breathValue * 0.3;
-            convexDiv.style.transform = `perspective(1200px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
-        }, 180);
-    </script>
+        case "exit":
+            adminMode = false;
+            promptSpan.innerText = "A>";
+        break;
+
+        case "list":
+            if (adminMode) {
+                Object.keys(usersList).forEach(u => addHistoryLine(u));
+            }
+        break;
+
+        case "send_all":
+            if (adminMode) {
+                let color = parts[1];
+                let msg = parts.slice(2).join(" ");
+                channel.postMessage({
+                    type: "broadcast",
+                    message: msg,
+                    color: color,
+                    from: clientId
+                });
+            }
+        break;
+
+        case "send_user":
+            if (adminMode) {
+                let id = parts[1];
+                let msg = parts.slice(2).join(" ");
+                channel.postMessage({
+                    type: "direct",
+                    to: id,
+                    message: msg,
+                    from: clientId
+                });
+            }
+        break;
+
+        case "kick":
+            if (adminMode) {
+                channel.postMessage({
+                    type: "kick",
+                    to: parts[1]
+                });
+            }
+        break;
+
+        default:
+            addHistoryLine("UNKNOWN COMMAND");
+    }
+}
+
+/* ================== START ================== */
+setTimeout(() => {
+    init();
+    register();
+}, 4100);
+
+/* focus */
+document.querySelector('.terminal').addEventListener('click', () => cmdInput.focus());
+
+</script>
 </body>
 </html>
