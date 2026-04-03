@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>TERMLINK PROTOCOL // FILE SYSTEM v.INF</title>
+    <title>TERMLINK PROTOCOL // FILE SYSTEM</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            cursor: url('https://i.ibb.co/WNRqtkN3/image-9.png') 0 0, auto;
         }
 
         body {
@@ -17,11 +18,17 @@
             height: 100vh;
             overflow: hidden;
             font-family: 'Courier New', 'Fira Code', 'VT323', monospace;
-            /* КУРСОР из ссылки */
-            cursor: url('https://i.ibb.co/WNRqtkN3/image-9.png'), auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            animation: crtFlicker 0.08s infinite;
         }
 
-        /* ВЫПУКЛЫЙ CRT ЭКРАН */
+        @keyframes crtFlicker {
+            0% { opacity: 0.97; }
+            100% { opacity: 1; }
+        }
+
         .crt-convex {
             position: relative;
             width: 100%;
@@ -81,7 +88,6 @@
             border-radius: inherit;
         }
 
-        /* ЗАГРУЗОЧНЫЙ ЭКРАН */
         .boot-screen {
             position: fixed;
             top: 0;
@@ -98,11 +104,13 @@
             color: #2eff7a;
             transition: opacity 0.3s ease;
         }
+
         .boot-screen.hidden {
             opacity: 0;
             pointer-events: none;
             visibility: hidden;
         }
+
         .boot-version {
             font-size: 2rem;
             letter-spacing: 4px;
@@ -111,12 +119,12 @@
             max-width: 98vw;
             padding: 0 1rem;
         }
+
         .boot-spinner {
             font-size: 2.5rem;
             margin-top: 1rem;
         }
 
-        /* Строка версии */
         .version-scroll {
             overflow-x: hidden;
             white-space: nowrap;
@@ -124,6 +132,7 @@
             border-bottom: 1px solid #2e8b57;
             padding-bottom: 0.3rem;
         }
+
         .system-version {
             font-size: 2rem;
             font-weight: bold;
@@ -137,9 +146,11 @@
             flex-direction: column;
             height: 100%;
         }
+
         .dos-screen.active {
             display: flex;
         }
+
         .command-history {
             flex: 1;
             background: #020802aa;
@@ -151,10 +162,12 @@
             font-family: monospace;
             white-space: pre-wrap;
         }
+
         .history-line {
             margin: 0.1rem 0;
             line-height: 1.3;
         }
+
         .command-line {
             display: flex;
             align-items: center;
@@ -164,11 +177,13 @@
             border-radius: 16px;
             margin-top: 0.2rem;
         }
+
         .prompt {
             font-size: 1rem;
             font-weight: bold;
             color: #b0ffb0;
         }
+
         #cmdInput {
             background: transparent;
             border: none;
@@ -180,38 +195,6 @@
             caret-color: #5eff8f;
         }
 
-        .control-bar {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.8rem;
-            margin-top: 1rem;
-            align-items: center;
-            border-top: 1px solid #2a6e2a;
-            padding-top: 0.8rem;
-            font-size: 0.7rem;
-        }
-        .fx-toggles {
-            display: flex;
-            gap: 1rem;
-            background: #061006b3;
-            padding: 0.3rem 0.8rem;
-            border-radius: 28px;
-        }
-        .fx-toggles label {
-            color: #bbffbb;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .howto {
-            font-size: 0.65rem;
-            background: #071007aa;
-            padding: 0.3rem 0.8rem;
-            border-radius: 20px;
-            color: #aaffaa;
-        }
-
         .effect-layer {
             position: fixed;
             top: 0;
@@ -221,6 +204,7 @@
             pointer-events: none;
             z-index: 10000;
         }
+
         #noiseCanvas {
             position: fixed;
             top: 0;
@@ -232,6 +216,7 @@
             pointer-events: none;
             z-index: 10001;
         }
+
         .scanlines {
             position: fixed;
             top: 0;
@@ -243,27 +228,20 @@
             z-index: 10002;
             animation: scanMove 0.15s linear infinite;
         }
+
         @keyframes scanMove {
             0% { background-position: 0 0; }
             100% { background-position: 0 8px; }
-        }
-        @keyframes crtFlicker {
-            0% { opacity: 0.97; }
-            100% { opacity: 1; }
-        }
-        body {
-            animation: crtFlicker 0.08s infinite;
         }
     </style>
 </head>
 <body>
 
     <canvas id="noiseCanvas" class="effect-layer"></canvas>
-    <div class="scanlines" id="scanlinesLayer"></div>
+    <div class="scanlines"></div>
 
-    <!-- ЗАГРУЗОЧНЫЙ ЭКРАН 4 СЕКУНДЫ -->
     <div id="bootScreen" class="boot-screen">
-        <div class="boot-version" id="bootVersion">TERMLINK PROTOCOL v.INF</div>
+        <div class="boot-version">TERMLINK PROTOCOL v.INF</div>
         <div class="boot-spinner" id="bootSpinner">/</div>
         <div style="margin-top: 2rem;">[ ACTIVATING TERMLINK ]</div>
     </div>
@@ -281,19 +259,25 @@
                     <input type="text" id="cmdInput" autofocus spellcheck="false" autocomplete="off">
                 </div>
             </div>
-
-            <div class="control-bar">
-                <div class="fx-toggles">
-                    <label><input type="checkbox" id="toggleNoise" checked> 📺 ШУМ</label>
-                    <label><input type="checkbox" id="toggleScanlines" checked> 📼 ПОЛОСЫ</label>
-                </div>
-                <div class="howto">🖱️ КУРСОР ЗАМЕНЁН (изображение)</div>
-            </div>
         </div>
     </div>
 
     <script>
-        // Функции даты/времени
+        const files = {
+            "001": {
+                name: "INFO.txt",
+                content: "=== SYSTEM INFORMATION ===\nTERMLINK PROTOCOL v.INF\nROBCO INDUSTRIES (TM)\nMILITECH MK31 DEFENDER\nACTIVE SINCE 2049-08-04\nINFINITE CORE ONLINE",
+                protected: false,
+                password: null
+            },
+            "002": {
+                name: "STASON.dat",
+                content: "=== STASON DATA ===\n[CONFIDENTIAL]\nACCESS GRANTED\nSECURITY LEVEL: ALPHA\nSYSTEM OVERRIDE CODE: X7-990-0A1",
+                protected: true,
+                password: "3350"
+            }
+        };
+
         function getCurrentDate() {
             const now = new Date();
             const month = (now.getMonth() + 1).toString().padStart(2, '0');
@@ -301,6 +285,7 @@
             const year = now.getFullYear().toString().slice(-2);
             return `${month}-${day}-${year}`;
         }
+
         function getCurrentTime() {
             const now = new Date();
             const hours = now.getHours().toString().padStart(2, '0');
@@ -309,7 +294,6 @@
             return `${hours}:${minutes}:${seconds}`;
         }
 
-        // ЗАГРУЗКА 4 сек
         const bootScreen = document.getElementById('bootScreen');
         const dosScreen = document.getElementById('dosScreen');
         const bootSpinner = document.getElementById('bootSpinner');
@@ -328,14 +312,15 @@
             document.getElementById('cmdInput').focus();
         }, 4000);
 
-        // ШУМ
         const noiseCanvas = document.getElementById('noiseCanvas');
         let noiseCtx = noiseCanvas.getContext('2d');
         let noiseActive = true;
+
         function resizeNoise() {
             noiseCanvas.width = window.innerWidth;
             noiseCanvas.height = window.innerHeight;
         }
+
         function generateNoise() {
             if (!noiseActive) {
                 if (noiseCtx) noiseCtx.clearRect(0, 0, noiseCanvas.width, noiseCanvas.height);
@@ -354,32 +339,11 @@
             noiseCtx.putImageData(imgData, 0, 0);
             requestAnimationFrame(generateNoise);
         }
+
         window.addEventListener('resize', () => resizeNoise());
         resizeNoise();
         generateNoise();
-        const toggleNoise = document.getElementById('toggleNoise');
-        toggleNoise.addEventListener('change', (e) => { noiseActive = e.target.checked; });
 
-        // ПОЛОСЫ
-        const scanDiv = document.getElementById('scanlinesLayer');
-        document.getElementById('toggleScanlines').addEventListener('change', (e) => {
-            scanDiv.style.opacity = e.target.checked ? '1' : '0';
-        });
-
-        // ФАЙЛОВАЯ СИСТЕМА С ID
-        const files = [
-            { id: '001', name: 'INFO', ext: 'TXT', size: 128, date: getCurrentDate(), 
-              content: '=== SYSTEM INFORMATION ===\nTERMLINK PROTOCOL v.INF\nACTIVE NODE: MILITECH MK31\nSECURITY LEVEL: OMEGA\nCONNECTION: STABLE\nUPTIME: INFINITE' },
-            { id: '002', name: 'STASON', ext: 'DAT', size: 256, date: getCurrentDate(), 
-              password: '3350',
-              content: '=== STASON LOGS ===\nCLASSIFIED: EYES ONLY\nOPERATION: NIGHTFALL\nSTATUS: PENDING\nACCESS GRANTED.\nDECODED MESSAGE: THE SIGNAL IS ACTIVE.' }
-        ];
-
-        // Ожидание пароля для 002
-        let awaitingPassword = false;
-        let pendingFileId = null;
-
-        // История
         const historyContainer = document.getElementById('historyContainer');
         const cmdInput = document.getElementById('cmdInput');
         const promptSpan = document.getElementById('currentPrompt');
@@ -403,68 +367,74 @@
             addHistoryLine('');
             addHistoryLine(`Enter today's date (m-d-y): ${getCurrentDate()}`);
             addHistoryLine('');
-            addHistoryLine('Available commands: DIR, DIR <ID>, DATE, TIME, HELP, CLS, VER');
+            addHistoryLine('Available commands: DIR, DATE, TIME, HELP, CLS, VER');
+            addHistoryLine('  DIR <ID>  - open file (ID: 001, 002)');
             addHistoryLine('');
         }
 
-        function displayFileContent(file) {
-            addHistoryLine(`=== ${file.name}.${file.ext} (ID: ${file.id}) ===`);
-            file.content.split('\n').forEach(line => addHistoryLine(line));
-            addHistoryLine('=== END OF FILE ===');
+        let pendingFileId = null;
+
+        function displayFileContent(id) {
+            const file = files[id];
+            if (!file) {
+                addHistoryLine(`File ID ${id} not found.`);
+                return;
+            }
+            if (file.protected) {
+                addHistoryLine(`File "${file.name}" is password protected. Enter password:`);
+                pendingFileId = id;
+                cmdInput.dataset.mode = "password";
+                cmdInput.value = "";
+                cmdInput.focus();
+            } else {
+                addHistoryLine(`=== ${file.name} (ID: ${id}) ===`);
+                file.content.split('\n').forEach(line => addHistoryLine(line));
+                addHistoryLine('');
+            }
+        }
+
+        function checkPassword(inputPass) {
+            if (!pendingFileId) return;
+            const file = files[pendingFileId];
+            if (inputPass === file.password) {
+                addHistoryLine(`Access granted. Opening ${file.name}:`);
+                addHistoryLine(`=== ${file.name} (ID: ${pendingFileId}) ===`);
+                file.content.split('\n').forEach(line => addHistoryLine(line));
+                addHistoryLine('');
+            } else {
+                addHistoryLine(`Access denied. Incorrect password for ${file.name}.`);
+            }
+            pendingFileId = null;
+            cmdInput.dataset.mode = "normal";
         }
 
         function processCommand(cmd) {
             const trimmed = cmd.trim();
             if (trimmed === '') return;
 
-            // Если ожидаем пароль
-            if (awaitingPassword && pendingFileId) {
-                addHistoryLine(`${currentPath}>${trimmed}`, true);
-                if (trimmed === files.find(f => f.id === pendingFileId)?.password) {
-                    const file = files.find(f => f.id === pendingFileId);
-                    displayFileContent(file);
-                } else {
-                    addHistoryLine('ACCESS DENIED: Incorrect password.');
-                }
-                awaitingPassword = false;
-                pendingFileId = null;
-                return;
-            }
-
             addHistoryLine(`${currentPath}>${trimmed}`, true);
+
             const parts = trimmed.split(/\s+/);
             const command = parts[0].toLowerCase();
 
-            // Команда DIR без аргументов — список файлов с ID
             if (command === 'dir') {
                 if (parts.length === 1) {
                     addHistoryLine(' Volume in drive A is TERMLINK_VOL');
                     addHistoryLine(' Volume Serial Number is 2E47-1901');
                     addHistoryLine('');
-                    addHistoryLine(' ID    Name         Size   Date');
-                    for (const f of files) {
-                        const idPad = f.id.padEnd(6);
-                        const namePad = (f.name + '.' + f.ext).padEnd(12);
-                        const sizePad = f.size.toString().padStart(5);
-                        addHistoryLine(` ${idPad} ${namePad} ${sizePad}  ${f.date}`);
+                    addHistoryLine('ID    Name           Size');
+                    addHistoryLine('---   ----           ----');
+                    for (const [id, file] of Object.entries(files)) {
+                        const size = (file.content.length + 32).toString().padStart(6, ' ');
+                        addHistoryLine(`${id}    ${file.name.padEnd(12)} ${size} bytes`);
                     }
-                    addHistoryLine(`       ${files.length} File(s)         5120 bytes free`);
-                } 
-                else {
-                    // DIR <ID>
-                    const id = parts[1];
-                    const foundFile = files.find(f => f.id === id);
-                    if (!foundFile) {
-                        addHistoryLine(`File with ID "${id}" not found.`);
-                        return;
-                    }
-                    if (foundFile.id === '002') {
-                        // Требуем пароль
-                        awaitingPassword = true;
-                        pendingFileId = '002';
-                        addHistoryLine('Password required:');
+                    addHistoryLine(`       ${Object.keys(files).length} File(s)         5120 bytes free`);
+                } else {
+                    const fileId = parts[1];
+                    if (/^\d{3}$/.test(fileId)) {
+                        displayFileContent(fileId);
                     } else {
-                        displayFileContent(foundFile);
+                        addHistoryLine(`Invalid file ID. Use three-digit number (e.g., 001).`);
                     }
                 }
             }
@@ -478,17 +448,13 @@
             }
             else if (command === 'help') {
                 addHistoryLine('Available commands:');
-                addHistoryLine('  DIR          - list all files with IDs');
-                addHistoryLine('  DIR <ID>     - open file by ID (e.g., DIR 001)');
-                addHistoryLine('  DATE         - show current system date');
-                addHistoryLine('  TIME         - show current system time');
-                addHistoryLine('  CLS          - clear screen');
-                addHistoryLine('  VER          - display terminal version');
-                addHistoryLine('  HELP         - show this help');
-                addHistoryLine('');
-                addHistoryLine('Files:');
-                addHistoryLine('  001  INFO.TXT    - system information');
-                addHistoryLine('  002  STASON.DAT  - protected (password required)');
+                addHistoryLine('  DIR           - list files');
+                addHistoryLine('  DIR <ID>      - open file (ID: 001, 002)');
+                addHistoryLine('  DATE          - show current system date');
+                addHistoryLine('  TIME          - show current system time');
+                addHistoryLine('  CLS           - clear screen');
+                addHistoryLine('  VER           - display terminal version');
+                addHistoryLine('  HELP          - show this help');
             }
             else if (command === 'cls') {
                 while (historyContainer.firstChild) historyContainer.removeChild(historyContainer.firstChild);
@@ -509,8 +475,15 @@
 
         cmdInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
-                processCommand(cmdInput.value);
-                cmdInput.value = '';
+                const value = cmdInput.value;
+                if (cmdInput.dataset.mode === "password") {
+                    checkPassword(value);
+                    cmdInput.dataset.mode = "normal";
+                    cmdInput.value = "";
+                } else {
+                    processCommand(value);
+                    cmdInput.value = "";
+                }
             }
         });
 
@@ -518,7 +491,6 @@
             cmdInput.focus();
         });
 
-        // Эффект дыхания выпуклости
         const convexDiv = document.getElementById('crtConvex');
         let breathDirection = 1;
         let breathValue = 0;
