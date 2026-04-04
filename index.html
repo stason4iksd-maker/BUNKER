@@ -812,7 +812,8 @@
         const channel = new BroadcastChannel('ssl_admin_channel');
         const clientId = 'id_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now();
         let adminMode = false;
-        let onlineUsers = new Set();
+        // Для админа: map clientId -> nick
+        let onlineClients = new Map(); // clientId -> nick
 
         let loggedInNick = null;
         let chatInterval = null;
@@ -903,35 +904,40 @@
             setTimeout(() => div.remove(), 5000);
         }
 
-        // ================== USER SYNC (ADMIN) ==================
-        function announceNewUser() {
-            onlineUsers.add(clientId);
-            channel.postMessage({ type: 'new_client', id: clientId });
-        }
-        function announceRemoveUser() {
-            onlineUsers.delete(clientId);
-            channel.postMessage({ type: 'remove_client', id: clientId });
-        }
-        function requestFullUserList() {
-            channel.postMessage({ type: 'request_full_list', from: clientId });
+        // ================== СИНХРОНИЗАЦИЯ ПОЛЬЗОВАТЕЛЕЙ (НИКИ) ==================
+        function announceLogin(nick) {
+            channel.postMessage({ type: 'login', nick: nick, clientId: clientId });
         }
 
+        function announceLogout() {
+            channel.postMessage({ type: 'logout', clientId: clientId });
+        }
+
+        // Обработка сообщений канала (расширена для логина/логаута)
         channel.onmessage = (e) => {
             const data = e.data;
             if (!data) return;
-            if (data.type === 'new_client') {
-                onlineUsers.add(data.id);
-                if (adminMode) addHistoryLine(`[ADMIN] New user connected: ${data.id}`, false);
+
+            if (data.type === 'login') {
+                onlineClients.set(data.clientId, data.nick);
+                if (adminMode) addHistoryLine(`[ADMIN] User ${data.nick} logged in.`, false);
+            }
+            else if (data.type === 'logout') {
+                const nick = onlineClients.get(data.clientId);
+                onlineClients.delete(data.clientId);
+                if (adminMode && nick) addHistoryLine(`[ADMIN] User ${nick} logged out.`, false);
+            }
+            else if (data.type === 'new_client') {
+                // старый тип совместимости, игнорируем
             }
             else if (data.type === 'remove_client') {
-                onlineUsers.delete(data.id);
-                if (adminMode) addHistoryLine(`[ADMIN] User disconnected: ${data.id}`, false);
+                // старый тип
             }
             else if (data.type === 'request_full_list') {
-                channel.postMessage({ type: 'client_present', id: clientId, target: data.from });
+                // отвечаем только если мы админ? не нужно
             }
             else if (data.type === 'client_present') {
-                if (adminMode && data.target === clientId) onlineUsers.add(data.id);
+                // не используем
             }
             else if (data.type === 'broadcast') {
                 if (data.from !== clientId) {
@@ -972,11 +978,10 @@
             clearInterval(spinnerInterval);
             bootScreen.classList.add('hidden');
             await loadGistFiles();
-            // Показываем экран логина
             loginScreen.style.display = 'flex';
             dosScreen.style.display = 'none';
             document.getElementById('loginCmdInput').focus();
-            announceNewUser();
+            // не отправляем announceNewUser, ждём логин
         }, 4000);
 
         // ================== NOISE ==================
@@ -1066,6 +1071,10 @@
                         dosScreen.style.display = 'flex';
                         initHistory();
                         document.getElementById('cmdInput').focus();
+                        // Оповещаем админа и других о входе
+                        announceLogin(nick);
+                        // Также добавляем себя в карту локально
+                        onlineClients.set(clientId, nick);
                         return true;
                     } else {
                         addLoginHistoryLine('Invalid password.');
@@ -1166,7 +1175,7 @@
             }
         });
 
-        // ================== ОСНОВНОЙ ТЕРМИНАЛ (история, команды) ==================
+        // ================== ОСНОВНОЙ ТЕРМИНАЛ ==================
         const historyContainer = document.getElementById('historyContainer');
         const cmdInput = document.getElementById('cmdInput');
         const promptSpan = document.getElementById('currentPrompt');
@@ -1251,12 +1260,8 @@
                 promptSpan.innerText = `ADMIN>`;
                 addHistoryLine('Access granted. You are now in ADMIN mode.', false);
                 addHistoryLine('Type "help" for admin commands, "exit" to leave admin mode.', false);
-                onlineUsers.clear();
-                onlineUsers.add(clientId);
-                requestFullUserList();
-                setTimeout(() => {
-                    addHistoryLine(`[ADMIN] Current users online: ${Array.from(onlineUsers).join(', ') || 'none'}`, false);
-                }, 500);
+                // onlineClients уже содержит данные от announceLogin
+                addHistoryLine(`[ADMIN] Current users online: ${Array.from(onlineClients.values()).join(', ') || 'none'}`, false);
             } else {
                 addHistoryLine('Access denied. Invalid password.', false);
             }
@@ -1268,9 +1273,9 @@
         function adminHelp() {
             addHistoryLine('Admin commands:');
             addHistoryLine('  send_all <color> <msg>   - broadcast');
-            addHistoryLine('  send_user <ID> <msg>     - private');
-            addHistoryLine('  list                     - show users');
-            addHistoryLine('  kick <ID>                - kick user');
+            addHistoryLine('  send_user <ID> <msg>     - private (ID = nickname)');
+            addHistoryLine('  list                     - show online users (nicknames)');
+            addHistoryLine('  kick <nick>              - kick user by nickname');
             addHistoryLine('  LS                       - list cloud files');
             addHistoryLine('  CAT <file>               - view cloud file');
             addHistoryLine('  NEW <file>               - create cloud file (multiline, end with .)');
@@ -1320,6 +1325,19 @@
             gistFiles['password.md'] = newLines.join('\n');
             await saveGistFiles(gistFiles);
             addHistoryLine(`Player ${nick} deleted.`);
+            // Также можно отправить сообщение на кик, если этот пользователь онлайн
+            // найдём clientId по нику
+            let targetClientId = null;
+            for (let [cid, n] of onlineClients.entries()) {
+                if (n === nick) {
+                    targetClientId = cid;
+                    break;
+                }
+            }
+            if (targetClientId) {
+                channel.postMessage({ type: 'kick', targetId: targetClientId, from: clientId });
+                addHistoryLine(`User ${nick} kicked from session.`);
+            }
         }
 
         async function adminListGist() {
@@ -1395,8 +1413,9 @@
             }
             else if (command === 'help') adminHelp();
             else if (command === 'list') {
-                if (onlineUsers.size === 0) addHistoryLine('No users online.', false);
-                else addHistoryLine(`Online users (${onlineUsers.size}): ${Array.from(onlineUsers).join(', ')}`, false);
+                const nicks = Array.from(onlineClients.values());
+                if (nicks.length === 0) addHistoryLine('No users online.', false);
+                else addHistoryLine(`Online users (${nicks.length}): ${nicks.join(', ')}`, false);
             }
             else if (command === 'send_all') {
                 if (parts.length < 3) { addHistoryLine('Usage: send_all <color> <message>', false); return; }
@@ -1408,19 +1427,45 @@
                 addHistoryLine(`[ADMIN] Broadcast sent to all (${color}): ${message}`, false);
             }
             else if (command === 'send_user') {
-                if (parts.length < 3) { addHistoryLine('Usage: send_user <ID> <message>', false); return; }
-                const targetId = parts[1];
+                if (parts.length < 3) { addHistoryLine('Usage: send_user <nick> <message>', false); return; }
+                const targetNick = parts[1];
                 const message = parts.slice(2).join(' ');
+                // найти clientId по нику
+                let targetId = null;
+                for (let [cid, nick] of onlineClients.entries()) {
+                    if (nick === targetNick) {
+                        targetId = cid;
+                        break;
+                    }
+                }
+                if (!targetId) {
+                    addHistoryLine(`User ${targetNick} not online.`, false);
+                    return;
+                }
                 channel.postMessage({ type: 'direct', targetId, message, color: '#ffaa55', from: clientId });
-                addHistoryLine(`[ADMIN] Private message sent to ${targetId}: ${message}`, false);
+                addHistoryLine(`[ADMIN] Private message sent to ${targetNick}: ${message}`, false);
             }
             else if (command === 'kick') {
-                if (parts.length < 2) { addHistoryLine('Usage: kick <ID>', false); return; }
-                const targetId = parts[1];
-                if (targetId === clientId) { addHistoryLine('[ADMIN] You cannot kick yourself.', false); return; }
+                if (parts.length < 2) { addHistoryLine('Usage: kick <nick>', false); return; }
+                const targetNick = parts[1];
+                let targetId = null;
+                for (let [cid, nick] of onlineClients.entries()) {
+                    if (nick === targetNick) {
+                        targetId = cid;
+                        break;
+                    }
+                }
+                if (!targetId) {
+                    addHistoryLine(`User ${targetNick} not online.`, false);
+                    return;
+                }
+                if (targetId === clientId) {
+                    addHistoryLine('[ADMIN] You cannot kick yourself.', false);
+                    return;
+                }
                 channel.postMessage({ type: 'kick', targetId, from: clientId });
-                addHistoryLine(`[ADMIN] Kicked user ${targetId}`, false);
-                onlineUsers.delete(targetId);
+                addHistoryLine(`[ADMIN] Kicked user ${targetNick}`, false);
+                onlineClients.delete(targetId);
             }
             else if (command === 'ls') {
                 adminListGist();
@@ -1549,7 +1594,7 @@
             }
         });
 
-        // ================== PAINT ==================
+        // ================== PAINT (полная копия из предыдущей версии) ==================
         const paintAppDiv = document.getElementById('paintApp');
         const closePaintBtnPaint = document.getElementById('closePaintBtn');
         const paintCanvas = document.getElementById('paintCanvas');
@@ -2168,7 +2213,9 @@
         });
 
         window.addEventListener('beforeunload', () => {
-            announceRemoveUser();
+            if (loggedInNick) {
+                announceLogout();
+            }
         });
 
         const convexDiv = document.getElementById('crtConvex');
