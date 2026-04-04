@@ -392,7 +392,7 @@
             overflow-x: auto;
         }
 
-        /* PAINT APP (слои, прозрачность, размер кисти) */
+        /* PAINT APP */
         .paint-app {
             display: none;
             position: fixed;
@@ -653,6 +653,21 @@
             color: #8eff8e;
             border-top: 1px solid #2e8b57;
         }
+
+        /* LOGIN SCREEN */
+        .login-screen {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            justify-content: center;
+        }
+        .login-prompt {
+            background: #020802aa;
+            border-radius: 12px;
+            padding: 1rem;
+            margin: 1rem 0;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -672,7 +687,22 @@
                 <div class="system-version">SSL // SERVER</div>
             </div>
 
-            <div id="dosScreen" class="dos-screen">
+            <!-- Экран логина (показывается после загрузки) -->
+            <div id="loginScreen" class="login-screen">
+                <div class="command-history" id="loginHistoryContainer">
+                    <div class="history-line">=== AUTHENTICATION REQUIRED ===</div>
+                    <div class="history-line">Please register or login to continue.</div>
+                    <div class="history-line">Commands: register &lt;password&gt; &lt;nick&gt; | login &lt;password&gt; &lt;nick&gt;</div>
+                    <div class="history-line"></div>
+                </div>
+                <div class="command-line">
+                    <span class="prompt">A&gt;</span>
+                    <input type="text" id="loginCmdInput" autofocus spellcheck="false" autocomplete="off">
+                </div>
+            </div>
+
+            <!-- Основной терминал (скрыт до логина) -->
+            <div id="dosScreen" class="dos-screen" style="display: none;">
                 <div class="command-history" id="historyContainer"></div>
                 <div class="command-line">
                     <span class="prompt" id="currentPrompt">A&gt;</span>
@@ -747,7 +777,6 @@
         </div>
     </div>
 
-    <!-- CHAT WINDOW -->
     <div id="chatApp" class="chat-app">
         <div class="chat-window">
             <div class="chat-header">
@@ -785,8 +814,7 @@
         let adminMode = false;
         let onlineUsers = new Set();
 
-        // Система авторизации
-        let loggedInNick = null;   // ник авторизованного пользователя
+        let loggedInNick = null;
         let chatInterval = null;
 
         const systemFiles = {
@@ -816,7 +844,6 @@
                     files[filename] = fileData.content || '';
                 }
                 gistFiles = files;
-                // инициализируем password.md и chat_history.md если их нет
                 if (!gistFiles['password.md']) gistFiles['password.md'] = '# Password storage\n';
                 if (!gistFiles['chat_history.md']) gistFiles['chat_history.md'] = '# Chat history\n';
                 return files;
@@ -932,6 +959,7 @@
         // ================== BOOT ==================
         const bootScreen = document.getElementById('bootScreen');
         const dosScreen = document.getElementById('dosScreen');
+        const loginScreen = document.getElementById('loginScreen');
         const bootSpinner = document.getElementById('bootSpinner');
         let spinIdx = 0;
         const spinnerChars = ["l", "/", "-", "\\"];
@@ -944,8 +972,10 @@
             clearInterval(spinnerInterval);
             bootScreen.classList.add('hidden');
             await loadGistFiles();
-            initHistory();
-            document.getElementById('cmdInput').focus();
+            // Показываем экран логина
+            loginScreen.style.display = 'flex';
+            dosScreen.style.display = 'none';
+            document.getElementById('loginCmdInput').focus();
             announceNewUser();
         }, 4000);
 
@@ -979,40 +1009,27 @@
         resizeNoise();
         generateNoise();
 
-        // ================== HISTORY & UI ==================
-        const historyContainer = document.getElementById('historyContainer');
-        const cmdInput = document.getElementById('cmdInput');
-        const promptSpan = document.getElementById('currentPrompt');
-        let currentPath = 'A';
-        let pendingFileId = null;
+        // ================== ИСТОРИЯ ДЛЯ ЭКРАНА ЛОГИНА ==================
+        const loginHistoryContainer = document.getElementById('loginHistoryContainer');
+        const loginCmdInput = document.getElementById('loginCmdInput');
 
-        function addHistoryLine(text, isCommand = false) {
+        function addLoginHistoryLine(text, isCommand = false) {
             const line = document.createElement('div');
             line.className = 'history-line';
             line.style.color = isCommand ? '#b0ffb0' : '#9eff9e';
             line.innerText = text;
-            historyContainer.appendChild(line);
-            historyContainer.scrollTop = historyContainer.scrollHeight;
-        }
-
-        function initHistory() {
-            addHistoryLine('╔══════════════════════════════════════════════════════════╗');
-            addHistoryLine('║                   SSL // SERVER                          ║');
-            addHistoryLine('║         ROBCO INDUSTRIES (TM) TERMINAL v.INF             ║');
-            addHistoryLine('╚══════════════════════════════════════════════════════════╝');
-            addHistoryLine('');
-            addHistoryLine(`Enter today's date (m-d-y): ${getCurrentDate()}`);
-            addHistoryLine('');
+            loginHistoryContainer.appendChild(line);
+            loginHistoryContainer.scrollTop = loginHistoryContainer.scrollHeight;
         }
 
         // ================== СИСТЕМА РЕГИСТРАЦИИ / ЛОГИНА ==================
         async function registerUser(password, nick) {
             if (!nick.match(/^[a-zA-Z0-9_]{3,20}$/)) {
-                addHistoryLine('Invalid nickname. Use 3-20 letters, digits, underscore.');
+                addLoginHistoryLine('Invalid nickname. Use 3-20 letters, digits, underscore.');
                 return false;
             }
             if (password.length < 4) {
-                addHistoryLine('Password too short (min 4 chars).');
+                addLoginHistoryLine('Password too short (min 4 chars).');
                 return false;
             }
             await loadGistFiles();
@@ -1020,16 +1037,16 @@
             const lines = content.split('\n');
             for (let line of lines) {
                 if (line.startsWith(nick + ':')) {
-                    addHistoryLine('Nickname already exists.');
+                    addLoginHistoryLine('Nickname already exists.');
                     return false;
                 }
             }
-            const hash = btoa(password); // простая кодировка, не для реальной безопасности
+            const hash = btoa(password);
             const newLine = `${nick}:${hash}`;
             content += newLine + '\n';
             gistFiles['password.md'] = content;
             await saveGistFiles(gistFiles);
-            addHistoryLine(`User ${nick} registered successfully. Use login.`);
+            addLoginHistoryLine(`User ${nick} registered successfully. Use login.`);
             return true;
         }
 
@@ -1043,15 +1060,20 @@
                     const storedHash = line.split(':')[1];
                     if (storedHash === targetHash) {
                         loggedInNick = nick;
-                        addHistoryLine(`Welcome, ${nick}! You are now logged in.`);
+                        addLoginHistoryLine(`Welcome, ${nick}! Access granted. Loading system...`);
+                        // Переключаемся на основной терминал
+                        loginScreen.style.display = 'none';
+                        dosScreen.style.display = 'flex';
+                        initHistory();
+                        document.getElementById('cmdInput').focus();
                         return true;
                     } else {
-                        addHistoryLine('Invalid password.');
+                        addLoginHistoryLine('Invalid password.');
                         return false;
                     }
                 }
             }
-            addHistoryLine('User not found.');
+            addLoginHistoryLine('User not found.');
             return false;
         }
 
@@ -1083,7 +1105,7 @@
 
         async function sendChatMessage(message) {
             if (!loggedInNick) {
-                chatStatusSpan.innerText = 'Not logged in. Use register/login.';
+                chatStatusSpan.innerText = 'Not logged in.';
                 return;
             }
             if (!message.trim()) return;
@@ -1092,7 +1114,6 @@
             await loadGistFiles();
             let content = gistFiles['chat_history.md'] || '# Chat history\n';
             content += formatted + '\n';
-            // Ограничим историю 200 строками
             const allLines = content.split('\n');
             if (allLines.length > 250) {
                 content = allLines.slice(0, 200).join('\n');
@@ -1113,7 +1134,7 @@
 
         function openChat() {
             if (!loggedInNick) {
-                addHistoryLine('You must login first (login <password> <nick>).');
+                addHistoryLine('You must login first.');
                 return;
             }
             chatApp.classList.add('active');
@@ -1144,6 +1165,32 @@
                 chatInput.value = '';
             }
         });
+
+        // ================== ОСНОВНОЙ ТЕРМИНАЛ (история, команды) ==================
+        const historyContainer = document.getElementById('historyContainer');
+        const cmdInput = document.getElementById('cmdInput');
+        const promptSpan = document.getElementById('currentPrompt');
+        let currentPath = 'A';
+        let pendingFileId = null;
+
+        function addHistoryLine(text, isCommand = false) {
+            const line = document.createElement('div');
+            line.className = 'history-line';
+            line.style.color = isCommand ? '#b0ffb0' : '#9eff9e';
+            line.innerText = text;
+            historyContainer.appendChild(line);
+            historyContainer.scrollTop = historyContainer.scrollHeight;
+        }
+
+        function initHistory() {
+            addHistoryLine('╔══════════════════════════════════════════════════════════╗');
+            addHistoryLine('║                   SSL // SERVER                          ║');
+            addHistoryLine('║         ROBCO INDUSTRIES (TM) TERMINAL v.INF             ║');
+            addHistoryLine('╚══════════════════════════════════════════════════════════╝');
+            addHistoryLine('');
+            addHistoryLine(`Enter today's date (m-d-y): ${getCurrentDate()}`);
+            addHistoryLine('');
+        }
 
         // ================== SYSTEM FILE OPEN ==================
         function displaySystemFile(id) {
@@ -1217,7 +1264,7 @@
             cmdInput.dataset.mode = "normal";
         }
 
-        // ================== ADMIN COMMANDS (добавлены VIEW PASSWORDS и DELETE PLAYER) ==================
+        // ================== ADMIN COMMANDS ==================
         function adminHelp() {
             addHistoryLine('Admin commands:');
             addHistoryLine('  send_all <color> <msg>   - broadcast');
@@ -1502,7 +1549,7 @@
             }
         });
 
-        // ================== PAINT (слои, прозрачность, размер кисти) ==================
+        // ================== PAINT ==================
         const paintAppDiv = document.getElementById('paintApp');
         const closePaintBtnPaint = document.getElementById('closePaintBtn');
         const paintCanvas = document.getElementById('paintCanvas');
@@ -1857,7 +1904,7 @@
         document.getElementById('layerFgBtn').addEventListener('click', () => setLayerPaint('fg'));
         document.getElementById('toggleFgVis').addEventListener('click', toggleFgVisibilityPaint);
         
-        // ================== USER COMMANDS ==================
+        // ================== USER COMMANDS (основной терминал) ==================
         async function userCreateFile(filename) {
             if (!filename) {
                 addHistoryLine('Enter new filename (must end with .md):');
@@ -1969,20 +2016,6 @@
             else if (command === 'paint.exe') {
                 openPaint();
             }
-            else if (command === 'register') {
-                if (parts.length < 3) {
-                    addHistoryLine('Usage: register <password> <nick>');
-                } else {
-                    await registerUser(parts[1], parts[2]);
-                }
-            }
-            else if (command === 'login') {
-                if (parts.length < 3) {
-                    addHistoryLine('Usage: login <password> <nick>');
-                } else {
-                    await loginUser(parts[1], parts[2]);
-                }
-            }
             else if (command === 'chat.exe') {
                 openChat();
             }
@@ -1992,9 +2025,7 @@
                 addHistoryLine('  DIR <ID|filename>       - view file (Markdown opens viewer)');
                 addHistoryLine('  DIR NEW [filename.md]   - create new Markdown file');
                 addHistoryLine('  DIR EDIT <filename.md>  - edit Markdown file');
-                addHistoryLine('  PAINT.EXE               - open retro paint (layers, opacity)');
-                addHistoryLine('  REGISTER <pass> <nick>  - create account');
-                addHistoryLine('  LOGIN <pass> <nick>     - login to chat');
+                addHistoryLine('  PAINT.EXE               - open retro paint');
                 addHistoryLine('  CHAT.EXE                - open multiplayer chat');
                 addHistoryLine('  CLS                     - clear screen');
                 addHistoryLine('  VER                     - show version');
@@ -2105,7 +2136,35 @@
 
         document.querySelector('.terminal').addEventListener('click', () => {
             if (mdEditor.style.display === 'flex') mdInputArea.focus();
-            else cmdInput.focus();
+            else if (dosScreen.style.display === 'flex') cmdInput.focus();
+            else if (loginScreen.style.display === 'flex') loginCmdInput.focus();
+        });
+
+        // ================== ОБРАБОТКА ВВОДА НА ЭКРАНЕ ЛОГИНА ==================
+        loginCmdInput.addEventListener('keypress', async (e) => {
+            if (e.key === 'Enter') {
+                const value = loginCmdInput.value.trim();
+                if (value === '') return;
+                addLoginHistoryLine(`A>${value}`, true);
+                const parts = value.split(/\s+/);
+                const command = parts[0].toLowerCase();
+                if (command === 'register') {
+                    if (parts.length < 3) {
+                        addLoginHistoryLine('Usage: register <password> <nick>');
+                    } else {
+                        await registerUser(parts[1], parts[2]);
+                    }
+                } else if (command === 'login') {
+                    if (parts.length < 3) {
+                        addLoginHistoryLine('Usage: login <password> <nick>');
+                    } else {
+                        await loginUser(parts[1], parts[2]);
+                    }
+                } else {
+                    addLoginHistoryLine('Unknown command. Use register or login.');
+                }
+                loginCmdInput.value = '';
+            }
         });
 
         window.addEventListener('beforeunload', () => {
