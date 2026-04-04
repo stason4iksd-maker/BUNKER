@@ -252,6 +252,7 @@
             100% { opacity: 0; visibility: hidden; transform: translateX(20px); }
         }
 
+        /* MARKDOWN EDITOR */
         #mdEditor {
             display: none;
             flex-direction: column;
@@ -316,6 +317,7 @@
             background: #1a4a1a;
         }
 
+        /* MARKDOWN VIEWER */
         .markdown-viewer {
             display: none;
             position: fixed;
@@ -389,6 +391,268 @@
             border-radius: 8px;
             overflow-x: auto;
         }
+
+        /* PAINT APP (слои, прозрачность, размер кисти) */
+        .paint-app {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(4px);
+            z-index: 40000;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Courier New', 'Fira Code', monospace;
+        }
+        .paint-app.active {
+            display: flex;
+        }
+        .paint-container {
+            width: 1100px;
+            max-width: 95vw;
+            background: #020a02;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            border-radius: 24px;
+            backdrop-filter: blur(2px);
+            border: 2px solid #3eff7e;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
+        }
+        .title-bar {
+            background: #041104;
+            padding: 0.3rem 1rem;
+            border: 1px solid #2e8b57;
+            font-family: monospace;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            color: #8eff8e;
+        }
+        .toolbar {
+            background: #041104;
+            border: 1px solid #2e8b57;
+            padding: 0.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        .tool-btn {
+            background: #0a2a0a;
+            border: 1px solid #3eff7e;
+            color: #3eff7e;
+            font-family: monospace;
+            padding: 0.3rem 0.8rem;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: 0.05s linear;
+        }
+        .tool-btn.active {
+            background: #2a6e2a;
+            color: #b0ffb0;
+            border: 1px solid #b0ffb0;
+            box-shadow: inset 0 0 5px #0f0;
+        }
+        .tool-btn:hover {
+            background: #1a4a1a;
+        }
+        .color-palette {
+            display: flex;
+            gap: 0.3rem;
+            margin-left: 1rem;
+            border-left: 1px solid #2e8b57;
+            padding-left: 1rem;
+        }
+        .color-swatch {
+            width: 28px;
+            height: 28px;
+            border: 1px solid #3eff7e;
+            cursor: pointer;
+        }
+        .color-swatch.active {
+            border: 2px solid white;
+            box-shadow: 0 0 6px #0f0;
+            transform: scale(1.05);
+        }
+        .brush-size {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: #0a2a0a;
+            padding: 0 8px;
+            border-radius: 12px;
+            height: 30px;
+        }
+        .brush-size button {
+            background: #041104;
+            border: 1px solid #3eff7e;
+            color: #3eff7e;
+            font-family: monospace;
+            font-size: 1rem;
+            width: 24px;
+            cursor: pointer;
+        }
+        .brush-size span {
+            min-width: 20px;
+            text-align: center;
+        }
+        .opacity-control {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: #0a2a0a;
+            padding: 0 8px;
+            border-radius: 12px;
+        }
+        .opacity-control input {
+            width: 80px;
+            cursor: pointer;
+            background: #041104;
+            accent-color: #3eff7e;
+        }
+        .layer-control {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #0a2a0a;
+            padding: 0 8px;
+            border-radius: 12px;
+        }
+        .layer-btn {
+            background: #041104;
+            border: 1px solid #3eff7e;
+            color: #3eff7e;
+            padding: 2px 6px;
+            cursor: pointer;
+        }
+        .layer-btn.active-layer {
+            background: #2a6e2a;
+            color: #b0ffb0;
+            border-color: #b0ffb0;
+        }
+        .canvas-area {
+            background: #010a01;
+            border: 2px solid #2e8b57;
+            display: flex;
+            justify-content: center;
+            padding: 0.5rem;
+        }
+        #paintCanvas {
+            background: #000000;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.2);
+            cursor: crosshair;
+        }
+        .status-bar {
+            background: #041104;
+            border: 1px solid #2e8b57;
+            padding: 0.2rem 1rem;
+            font-size: 0.7rem;
+            color: #8eff8e;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* CHAT WINDOW */
+        .chat-app {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(4px);
+            z-index: 50000;
+            justify-content: center;
+            align-items: center;
+            font-family: monospace;
+        }
+        .chat-app.active {
+            display: flex;
+        }
+        .chat-window {
+            width: 700px;
+            max-width: 90vw;
+            height: 550px;
+            background: #020a02;
+            border: 2px solid #3eff7e;
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
+        }
+        .chat-header {
+            background: #041104;
+            padding: 8px 15px;
+            border-bottom: 1px solid #2e8b57;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            color: #b0ffb0;
+        }
+        .chat-header button {
+            background: #0a2a0a;
+            border: 1px solid #3eff7e;
+            color: #3eff7e;
+            font-family: monospace;
+            font-size: 1rem;
+            padding: 2px 10px;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            font-size: 0.85rem;
+            background: #010801;
+            color: #9eff9e;
+        }
+        .chat-message {
+            margin: 4px 0;
+            word-break: break-all;
+        }
+        .chat-message .nick {
+            color: #b0ffb0;
+            font-weight: bold;
+        }
+        .chat-input-area {
+            background: #041104;
+            border-top: 1px solid #2e8b57;
+            padding: 8px;
+            display: flex;
+            gap: 8px;
+        }
+        .chat-input-area input {
+            flex: 1;
+            background: #000;
+            border: 1px solid #3eff7e;
+            color: #3eff7e;
+            font-family: monospace;
+            padding: 5px 8px;
+            outline: none;
+        }
+        .chat-input-area button {
+            background: #0a2a0a;
+            border: 1px solid #3eff7e;
+            color: #3eff7e;
+            font-family: monospace;
+            padding: 5px 12px;
+            cursor: pointer;
+        }
+        .chat-status {
+            background: #031003;
+            padding: 4px 10px;
+            font-size: 0.7rem;
+            color: #8eff8e;
+            border-top: 1px solid #2e8b57;
+        }
     </style>
 </head>
 <body>
@@ -440,8 +704,67 @@
         </div>
     </div>
 
+    <div id="paintApp" class="paint-app">
+        <div class="paint-container">
+            <div class="title-bar">
+                <span>CRT-PAINT.EXE (Layers + Opacity)</span>
+                <span>Terminal Graphics v.2.0</span>
+                <button id="closePaintBtn" style="background:#0a2a0a; border:1px solid #3eff7e; color:#3eff7e; font-family:monospace; padding:2px 8px; border-radius:12px; cursor:pointer;">X</button>
+            </div>
+            <div class="toolbar">
+                <button class="tool-btn" id="tool-pencil">Pencil</button>
+                <button class="tool-btn" id="tool-line">Line</button>
+                <button class="tool-btn" id="tool-rect">Rectangle</button>
+                <button class="tool-btn" id="tool-fill">Flood Fill</button>
+                <button class="tool-btn" id="tool-eraser">Eraser</button>
+                <button class="tool-btn" id="tool-clear">Clear Active</button>
+                
+                <div class="brush-size">
+                    <button id="sizeDown">-</button>
+                    <span id="brushSizeValue">1</span>
+                    <button id="sizeUp">+</button>
+                </div>
+                <div class="opacity-control">
+                    <span>Opacity:</span>
+                    <input type="range" id="opacitySlider" min="0" max="100" value="100">
+                    <span id="opacityValue">100%</span>
+                </div>
+                <div class="layer-control">
+                    <span>Layer:</span>
+                    <button id="layerBgBtn" class="layer-btn active-layer">BG</button>
+                    <button id="layerFgBtn" class="layer-btn">FG</button>
+                    <button id="toggleFgVis" class="layer-btn" style="margin-left:5px;">Show FG</button>
+                </div>
+                <div class="color-palette" id="color-palette"></div>
+            </div>
+            <div class="canvas-area">
+                <canvas id="paintCanvas" width="600" height="400"></canvas>
+            </div>
+            <div class="status-bar">
+                <span id="coord-status">X: 0, Y: 0</span>
+                <span id="tool-status">Tool: Pencil | Size:1 | Opacity:100% | Layer:BG</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- CHAT WINDOW -->
+    <div id="chatApp" class="chat-app">
+        <div class="chat-window">
+            <div class="chat-header">
+                <span>CHAT.EXE - Multiplayer Chat</span>
+                <button id="closeChatBtn">X</button>
+            </div>
+            <div id="chatMessages" class="chat-messages"></div>
+            <div class="chat-input-area">
+                <input type="text" id="chatInput" placeholder="Type your message..." maxlength="200">
+                <button id="chatSendBtn">Send</button>
+            </div>
+            <div id="chatStatus" class="chat-status">Not connected. Use register/login first.</div>
+        </div>
+    </div>
+
     <script>
-        // ================== TOKEN ==================
+        // ================== ТОКЕН И GIST ==================
         const DEFAULT_TOKEN = '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';
         const DEFAULT_GIST_ID = '03360f2ddda0253c68766cea35107a82';
 
@@ -456,16 +779,23 @@
         let gistId = localStorage.getItem('gist_id');
         let gistFiles = {};
 
-        // ================== GLOBAL VARIABLES ==================
+        // ================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==================
         const channel = new BroadcastChannel('ssl_admin_channel');
         const clientId = 'id_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now();
         let adminMode = false;
         let onlineUsers = new Set();
 
+        // Система авторизации
+        let loggedInNick = null;   // ник авторизованного пользователя
+        let chatInterval = null;
+
         const systemFiles = {
             "001": { name: "INFO.txt", content: "=== SYSTEM INFORMATION ===\nSSL // ROBCO INDUSTRIES (TM)\nMILITECH MK31 DEFENDER\nACTIVE SINCE 2049-08-04\nINFINITE CORE ONLINE", protected: false, password: null },
             "002": { name: "STASON.dat", content: "=== STASON DATA ===\n[CONFIDENTIAL]\nACCESS GRANTED\nSECURITY LEVEL: ALPHA\nSYSTEM OVERRIDE CODE: X7-990-0A1", protected: true, password: "3350" },
-            "003": { name: "sslDM.EXE", content: "ADMIN TOOL", protected: false, password: null, isAdminTool: true }
+            "003": { name: "sslDM.EXE", content: "ADMIN TOOL", protected: false, password: null, isAdminTool: true },
+            "004": { name: "paint.exe", content: "PAINT APPLICATION", protected: false, password: null, isPaint: true },
+            "005": { name: "password.md", content: "# Password storage\n", protected: false, password: null, isPasswordFile: true },
+            "006": { name: "chat_history.md", content: "# Chat history\n", protected: false, password: null }
         };
 
         // ================== GIST FUNCTIONS ==================
@@ -486,6 +816,9 @@
                     files[filename] = fileData.content || '';
                 }
                 gistFiles = files;
+                // инициализируем password.md и chat_history.md если их нет
+                if (!gistFiles['password.md']) gistFiles['password.md'] = '# Password storage\n';
+                if (!gistFiles['chat_history.md']) gistFiles['chat_history.md'] = '# Chat history\n';
                 return files;
             } catch(e) {
                 addHistoryLine(`[Gist load error] ${e.message}`, false);
@@ -672,12 +1005,156 @@
             addHistoryLine('');
         }
 
+        // ================== СИСТЕМА РЕГИСТРАЦИИ / ЛОГИНА ==================
+        async function registerUser(password, nick) {
+            if (!nick.match(/^[a-zA-Z0-9_]{3,20}$/)) {
+                addHistoryLine('Invalid nickname. Use 3-20 letters, digits, underscore.');
+                return false;
+            }
+            if (password.length < 4) {
+                addHistoryLine('Password too short (min 4 chars).');
+                return false;
+            }
+            await loadGistFiles();
+            let content = gistFiles['password.md'] || '# Password storage\n';
+            const lines = content.split('\n');
+            for (let line of lines) {
+                if (line.startsWith(nick + ':')) {
+                    addHistoryLine('Nickname already exists.');
+                    return false;
+                }
+            }
+            const hash = btoa(password); // простая кодировка, не для реальной безопасности
+            const newLine = `${nick}:${hash}`;
+            content += newLine + '\n';
+            gistFiles['password.md'] = content;
+            await saveGistFiles(gistFiles);
+            addHistoryLine(`User ${nick} registered successfully. Use login.`);
+            return true;
+        }
+
+        async function loginUser(password, nick) {
+            await loadGistFiles();
+            const content = gistFiles['password.md'] || '# Password storage\n';
+            const lines = content.split('\n');
+            const targetHash = btoa(password);
+            for (let line of lines) {
+                if (line.startsWith(nick + ':')) {
+                    const storedHash = line.split(':')[1];
+                    if (storedHash === targetHash) {
+                        loggedInNick = nick;
+                        addHistoryLine(`Welcome, ${nick}! You are now logged in.`);
+                        return true;
+                    } else {
+                        addHistoryLine('Invalid password.');
+                        return false;
+                    }
+                }
+            }
+            addHistoryLine('User not found.');
+            return false;
+        }
+
+        // ================== ЧАТ ==================
+        const chatApp = document.getElementById('chatApp');
+        const chatMessagesDiv = document.getElementById('chatMessages');
+        const chatInput = document.getElementById('chatInput');
+        const chatSendBtn = document.getElementById('chatSendBtn');
+        const closeChatBtn = document.getElementById('closeChatBtn');
+        const chatStatusSpan = document.getElementById('chatStatus');
+
+        let chatActive = false;
+
+        async function loadChatHistory() {
+            await loadGistFiles();
+            const content = gistFiles['chat_history.md'] || '# Chat history\n';
+            const lines = content.split('\n');
+            chatMessagesDiv.innerHTML = '';
+            for (let line of lines) {
+                if (line.startsWith('[') && line.includes(']')) {
+                    const msgDiv = document.createElement('div');
+                    msgDiv.className = 'chat-message';
+                    msgDiv.innerHTML = line;
+                    chatMessagesDiv.appendChild(msgDiv);
+                }
+            }
+            chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+        }
+
+        async function sendChatMessage(message) {
+            if (!loggedInNick) {
+                chatStatusSpan.innerText = 'Not logged in. Use register/login.';
+                return;
+            }
+            if (!message.trim()) return;
+            const timestamp = new Date().toLocaleTimeString();
+            const formatted = `[${timestamp}] <${loggedInNick}> ${message}`;
+            await loadGistFiles();
+            let content = gistFiles['chat_history.md'] || '# Chat history\n';
+            content += formatted + '\n';
+            // Ограничим историю 200 строками
+            const allLines = content.split('\n');
+            if (allLines.length > 250) {
+                content = allLines.slice(0, 200).join('\n');
+            }
+            gistFiles['chat_history.md'] = content;
+            await saveGistFiles(gistFiles);
+            await loadChatHistory();
+        }
+
+        async function startChatPolling() {
+            if (chatInterval) clearInterval(chatInterval);
+            chatInterval = setInterval(async () => {
+                if (chatActive && loggedInNick) {
+                    await loadChatHistory();
+                }
+            }, 2000);
+        }
+
+        function openChat() {
+            if (!loggedInNick) {
+                addHistoryLine('You must login first (login <password> <nick>).');
+                return;
+            }
+            chatApp.classList.add('active');
+            chatActive = true;
+            loadChatHistory();
+            startChatPolling();
+            chatStatusSpan.innerText = `Connected as ${loggedInNick}`;
+            chatInput.focus();
+        }
+
+        function closeChat() {
+            chatApp.classList.remove('active');
+            chatActive = false;
+            if (chatInterval) {
+                clearInterval(chatInterval);
+                chatInterval = null;
+            }
+        }
+
+        closeChatBtn.addEventListener('click', closeChat);
+        chatSendBtn.addEventListener('click', () => {
+            sendChatMessage(chatInput.value);
+            chatInput.value = '';
+        });
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendChatMessage(chatInput.value);
+                chatInput.value = '';
+            }
+        });
+
         // ================== SYSTEM FILE OPEN ==================
         function displaySystemFile(id) {
             const file = systemFiles[id];
             if (!file) return false;
             if (file.isAdminTool) {
                 promptAdminPassword();
+                return true;
+            }
+            if (file.isPaint) {
+                openPaint();
                 return true;
             }
             if (file.protected) {
@@ -740,7 +1217,7 @@
             cmdInput.dataset.mode = "normal";
         }
 
-        // ================== ADMIN COMMANDS ==================
+        // ================== ADMIN COMMANDS (добавлены VIEW PASSWORDS и DELETE PLAYER) ==================
         function adminHelp() {
             addHistoryLine('Admin commands:');
             addHistoryLine('  send_all <color> <msg>   - broadcast');
@@ -752,10 +1229,50 @@
             addHistoryLine('  NEW <file>               - create cloud file (multiline, end with .)');
             addHistoryLine('  EDIT <file>              - edit cloud file');
             addHistoryLine('  RM <file>                - delete cloud file');
+            addHistoryLine('  DELETE PLAYER <nick>     - remove user account');
+            addHistoryLine('  VIEW PASSWORDS           - show password.md (requires password 59938)');
             addHistoryLine('  GIST_TOKEN <token>       - set GitHub token (gist scope)');
             addHistoryLine('  GIST_ID <id>             - set gist ID');
             addHistoryLine('  DATE/TIME                - show system date/time');
             addHistoryLine('  exit                     - exit admin mode');
+        }
+
+        async function viewPasswords(providedPass) {
+            if (providedPass !== '59938') {
+                addHistoryLine('Access denied. Invalid password.');
+                return;
+            }
+            await loadGistFiles();
+            const content = gistFiles['password.md'] || '# Password storage\n';
+            addHistoryLine('=== password.md ===');
+            content.split('\n').forEach(line => addHistoryLine(line));
+            addHistoryLine('');
+        }
+
+        async function deletePlayer(nick) {
+            if (!nick) {
+                addHistoryLine('Usage: DELETE PLAYER <nick>');
+                return;
+            }
+            await loadGistFiles();
+            let content = gistFiles['password.md'] || '# Password storage\n';
+            const lines = content.split('\n');
+            const newLines = [];
+            let found = false;
+            for (let line of lines) {
+                if (line.startsWith(nick + ':')) {
+                    found = true;
+                    continue;
+                }
+                newLines.push(line);
+            }
+            if (!found) {
+                addHistoryLine(`Player ${nick} not found.`);
+                return;
+            }
+            gistFiles['password.md'] = newLines.join('\n');
+            await saveGistFiles(gistFiles);
+            addHistoryLine(`Player ${nick} deleted.`);
         }
 
         async function adminListGist() {
@@ -877,6 +1394,12 @@
                 if (parts.length < 2) addHistoryLine('Usage: RM <filename>');
                 else adminRmGist(parts[1]);
             }
+            else if (command === 'delete' && parts[1] === 'player') {
+                deletePlayer(parts[2]);
+            }
+            else if (command === 'view' && parts[1] === 'passwords') {
+                viewPasswords(parts[2]);
+            }
             else if (command === 'gist_token') {
                 if (parts.length < 2) { addHistoryLine('Usage: GIST_TOKEN <token>'); return; }
                 const newToken = parts[1];
@@ -979,6 +1502,361 @@
             }
         });
 
+        // ================== PAINT (слои, прозрачность, размер кисти) ==================
+        const paintAppDiv = document.getElementById('paintApp');
+        const closePaintBtnPaint = document.getElementById('closePaintBtn');
+        const paintCanvas = document.getElementById('paintCanvas');
+        const ctxPaint = paintCanvas.getContext('2d');
+        const W = 600, H = 400;
+        paintCanvas.width = W;
+        paintCanvas.height = H;
+
+        let bgCanvas = document.createElement('canvas');
+        let fgCanvas = document.createElement('canvas');
+        bgCanvas.width = W; bgCanvas.height = H;
+        fgCanvas.width = W; fgCanvas.height = H;
+        let bgCtx = bgCanvas.getContext('2d');
+        let fgCtx = fgCanvas.getContext('2d');
+        
+        bgCtx.fillStyle = '#000000';
+        bgCtx.fillRect(0, 0, W, H);
+        fgCtx.clearRect(0, 0, W, H);
+        
+        let activeLayer = 'bg';
+        let fgVisible = true;
+        
+        function compositeAndDraw() {
+            ctxPaint.drawImage(bgCanvas, 0, 0);
+            if (fgVisible) ctxPaint.drawImage(fgCanvas, 0, 0);
+        }
+        
+        function clearActiveLayer() {
+            if (activeLayer === 'bg') {
+                bgCtx.fillStyle = '#000000';
+                bgCtx.fillRect(0, 0, W, H);
+            } else {
+                fgCtx.clearRect(0, 0, W, H);
+            }
+            compositeAndDraw();
+        }
+        
+        let currentToolPaint = 'pencil';
+        let currentColorPaint = '#00aa00';
+        let brushSize = 1;
+        let opacityPaint = 100;
+        let drawingPaint = false;
+        let startX = 0, startY = 0;
+        let lastX = 0, lastY = 0;
+        let savedImageData = null;
+        let previewShape = null;
+        
+        const colorsPaint = [
+            { name: 'Black', code: '#000000' },
+            { name: 'DarkGreen', code: '#005500' },
+            { name: 'Green', code: '#00aa00' },
+            { name: 'BrightGreen', code: '#33ff33' },
+            { name: 'White', code: '#ffffff' },
+            { name: 'Lime', code: '#88ff88' }
+        ];
+        
+        function applyOpacity(ctxLayer) {
+            ctxLayer.globalAlpha = opacityPaint / 100;
+        }
+        
+        function drawPixel(ctxLayer, x, y, color) {
+            if (x < 0 || x >= W || y < 0 || y >= H) return;
+            applyOpacity(ctxLayer);
+            ctxLayer.fillStyle = color;
+            const half = Math.floor(brushSize / 2);
+            ctxLayer.fillRect(x - half, y - half, brushSize, brushSize);
+            ctxLayer.globalAlpha = 1;
+        }
+        
+        function drawLine(ctxLayer, x1, y1, x2, y2, color) {
+            applyOpacity(ctxLayer);
+            ctxLayer.beginPath();
+            ctxLayer.moveTo(x1, y1);
+            ctxLayer.lineTo(x2, y2);
+            ctxLayer.strokeStyle = color;
+            ctxLayer.lineWidth = brushSize;
+            ctxLayer.stroke();
+            ctxLayer.globalAlpha = 1;
+        }
+        
+        function drawRect(ctxLayer, x1, y1, x2, y2, color) {
+            applyOpacity(ctxLayer);
+            ctxLayer.strokeStyle = color;
+            ctxLayer.lineWidth = brushSize;
+            ctxLayer.strokeRect(x1, y1, x2 - x1, y2 - y1);
+            ctxLayer.globalAlpha = 1;
+        }
+        
+        function getActiveCtx() {
+            return activeLayer === 'bg' ? bgCtx : fgCtx;
+        }
+        
+        function floodFillOnLayer(ctxLayer, x, y, targetColor, fillColor) {
+            if (targetColor === fillColor) return;
+            const imageData = ctxLayer.getImageData(0, 0, W, H);
+            const data = imageData.data;
+            function getPixelColor(px, py) {
+                const idx = (py * W + px) * 4;
+                return `rgb(${data[idx]}, ${data[idx+1]}, ${data[idx+2]})`;
+            }
+            function setPixelColor(px, py, r, g, b) {
+                const idx = (py * W + px) * 4;
+                data[idx] = r;
+                data[idx+1] = g;
+                data[idx+2] = b;
+                data[idx+3] = 255;
+            }
+            let fillR, fillG, fillB;
+            if (fillColor === '#000000') { fillR=0; fillG=0; fillB=0; }
+            else if (fillColor === '#005500') { fillR=0; fillG=85; fillB=0; }
+            else if (fillColor === '#00aa00') { fillR=0; fillG=170; fillB=0; }
+            else if (fillColor === '#33ff33') { fillR=51; fillG=255; fillB=51; }
+            else if (fillColor === '#ffffff') { fillR=255; fillG=255; fillB=255; }
+            else if (fillColor === '#88ff88') { fillR=136; fillG=255; fillB=136; }
+            else { fillR=0; fillG=255; fillB=0; }
+            let targetR, targetG, targetB;
+            if (targetColor === '#000000') { targetR=0; targetG=0; targetB=0; }
+            else if (targetColor === '#005500') { targetR=0; targetG=85; targetB=0; }
+            else if (targetColor === '#00aa00') { targetR=0; targetG=170; targetB=0; }
+            else if (targetColor === '#33ff33') { targetR=51; targetG=255; targetB=51; }
+            else if (targetColor === '#ffffff') { targetR=255; targetG=255; targetB=255; }
+            else if (targetColor === '#88ff88') { targetR=136; targetG=255; targetB=136; }
+            else { targetR=0; targetG=255; targetB=0; }
+            const stack = [{x, y}];
+            const visited = new Set();
+            while (stack.length) {
+                const {x: px, y: py} = stack.pop();
+                if (px < 0 || px >= W || py < 0 || py >= H) continue;
+                const key = `${px},${py}`;
+                if (visited.has(key)) continue;
+                const idx = (py * W + px) * 4;
+                if (data[idx] === targetR && data[idx+1] === targetG && data[idx+2] === targetB) {
+                    setPixelColor(px, py, fillR, fillG, fillB);
+                    visited.add(key);
+                    stack.push({x: px+1, y: py}, {x: px-1, y: py}, {x: px, y: py+1}, {x: px, y: py-1});
+                }
+            }
+            ctxLayer.putImageData(imageData, 0, 0);
+        }
+        
+        function getMouseCoordsPaint(e) {
+            const rect = paintCanvas.getBoundingClientRect();
+            const scaleX = paintCanvas.width / rect.width;
+            const scaleY = paintCanvas.height / rect.height;
+            let clientX, clientY;
+            if (e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            let x = (clientX - rect.left) * scaleX;
+            let y = (clientY - rect.top) * scaleY;
+            x = Math.min(Math.max(0, x), W-1);
+            y = Math.min(Math.max(0, y), H-1);
+            return { x: Math.floor(x), y: Math.floor(y) };
+        }
+        
+        function startDrawPaint(e) {
+            e.preventDefault();
+            const { x, y } = getMouseCoordsPaint(e);
+            drawingPaint = true;
+            startX = x;
+            startY = y;
+            lastX = x;
+            lastY = y;
+            const ctxLayer = getActiveCtx();
+            if (currentToolPaint === 'pencil') {
+                drawPixel(ctxLayer, x, y, currentColorPaint);
+                compositeAndDraw();
+            } else if (currentToolPaint === 'eraser') {
+                drawPixel(ctxLayer, x, y, '#000000');
+                compositeAndDraw();
+            } else if (currentToolPaint === 'fill') {
+                const pixel = ctxLayer.getImageData(x, y, 1, 1).data;
+                const targetHex = `#${((1 << 24) + (pixel[0] << 16) + (pixel[1] << 8) + pixel[2]).toString(16).slice(1)}`;
+                floodFillOnLayer(ctxLayer, x, y, targetHex, currentColorPaint);
+                compositeAndDraw();
+                drawingPaint = false;
+            }
+        }
+        
+        function drawShapePaint(e) {
+            if (!drawingPaint) return;
+            const { x, y } = getMouseCoordsPaint(e);
+            const ctxLayer = getActiveCtx();
+            if (currentToolPaint === 'pencil') {
+                drawLine(ctxLayer, lastX, lastY, x, y, currentColorPaint);
+                lastX = x;
+                lastY = y;
+                compositeAndDraw();
+            } else if (currentToolPaint === 'eraser') {
+                drawLine(ctxLayer, lastX, lastY, x, y, '#000000');
+                lastX = x;
+                lastY = y;
+                compositeAndDraw();
+            } else if (currentToolPaint === 'line' || currentToolPaint === 'rect') {
+                if (previewShape) {
+                    if (activeLayer === 'bg') {
+                        bgCtx.putImageData(savedImageData, 0, 0);
+                    } else {
+                        fgCtx.putImageData(savedImageData, 0, 0);
+                    }
+                } else {
+                    savedImageData = (activeLayer === 'bg' ? bgCtx : fgCtx).getImageData(0, 0, W, H);
+                }
+                if (currentToolPaint === 'line') {
+                    drawLine(ctxLayer, startX, startY, x, y, currentColorPaint);
+                } else {
+                    drawRect(ctxLayer, startX, startY, x, y, currentColorPaint);
+                }
+                previewShape = { type: currentToolPaint, x1: startX, y1: startY, x2: x, y2: y };
+                compositeAndDraw();
+            }
+        }
+        
+        function endDrawPaint(e) {
+            if (!drawingPaint) return;
+            const { x, y } = getMouseCoordsPaint(e);
+            const ctxLayer = getActiveCtx();
+            if (currentToolPaint === 'line') {
+                drawLine(ctxLayer, startX, startY, x, y, currentColorPaint);
+                compositeAndDraw();
+            } else if (currentToolPaint === 'rect') {
+                drawRect(ctxLayer, startX, startY, x, y, currentColorPaint);
+                compositeAndDraw();
+            }
+            drawingPaint = false;
+            previewShape = null;
+            savedImageData = null;
+            updateStatusCoordsPaint(x, y);
+        }
+        
+        function updateStatusCoordsPaint(x, y) {
+            document.getElementById('coord-status').innerText = `X: ${x}, Y: ${y}`;
+            document.getElementById('tool-status').innerHTML = `Tool: ${currentToolPaint} | Size:${brushSize} | Opacity:${opacityPaint}% | Layer:${activeLayer.toUpperCase()}`;
+        }
+        
+        function setToolPaint(tool) {
+            currentToolPaint = tool;
+            document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+            if (tool === 'pencil') document.getElementById('tool-pencil').classList.add('active');
+            if (tool === 'line') document.getElementById('tool-line').classList.add('active');
+            if (tool === 'rect') document.getElementById('tool-rect').classList.add('active');
+            if (tool === 'fill') document.getElementById('tool-fill').classList.add('active');
+            if (tool === 'eraser') document.getElementById('tool-eraser').classList.add('active');
+            updateStatusCoordsPaint(0,0);
+        }
+        
+        function setColorPaint(colorCode) {
+            currentColorPaint = colorCode;
+            document.querySelectorAll('.color-swatch').forEach(sw => sw.classList.remove('active'));
+            const activeSwatch = Array.from(document.querySelectorAll('.color-swatch')).find(s => s.style.backgroundColor === colorCode);
+            if (activeSwatch) activeSwatch.classList.add('active');
+            updateStatusCoordsPaint(0,0);
+        }
+        
+        function initPalettePaint() {
+            const paletteDiv = document.getElementById('color-palette');
+            paletteDiv.innerHTML = '';
+            colorsPaint.forEach(col => {
+                const swatch = document.createElement('div');
+                swatch.className = 'color-swatch';
+                swatch.style.backgroundColor = col.code;
+                swatch.title = col.name;
+                swatch.addEventListener('click', () => setColorPaint(col.code));
+                paletteDiv.appendChild(swatch);
+            });
+            setColorPaint('#00aa00');
+        }
+        
+        function attachPaintEvents() {
+            paintCanvas.addEventListener('mousedown', startDrawPaint);
+            paintCanvas.addEventListener('mousemove', (e) => {
+                const { x, y } = getMouseCoordsPaint(e);
+                updateStatusCoordsPaint(x, y);
+                if (drawingPaint) drawShapePaint(e);
+            });
+            paintCanvas.addEventListener('mouseup', endDrawPaint);
+            paintCanvas.addEventListener('mouseleave', () => {
+                if (drawingPaint) endDrawPaint({});
+            });
+            paintCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawPaint(e); });
+            paintCanvas.addEventListener('touchmove', (e) => { e.preventDefault(); drawShapePaint(e); });
+            paintCanvas.addEventListener('touchend', (e) => { e.preventDefault(); endDrawPaint(e); });
+        }
+        
+        function setBrushSizePaint(size) {
+            brushSize = Math.min(5, Math.max(1, size));
+            document.getElementById('brushSizeValue').innerText = brushSize;
+            updateStatusCoordsPaint(0,0);
+        }
+        
+        function setOpacityPaint(val) {
+            opacityPaint = Math.min(100, Math.max(0, val));
+            document.getElementById('opacitySlider').value = opacityPaint;
+            document.getElementById('opacityValue').innerText = opacityPaint + '%';
+            updateStatusCoordsPaint(0,0);
+        }
+        
+        function setLayerPaint(layer) {
+            activeLayer = layer;
+            document.getElementById('layerBgBtn').classList.remove('active-layer');
+            document.getElementById('layerFgBtn').classList.remove('active-layer');
+            if (layer === 'bg') document.getElementById('layerBgBtn').classList.add('active-layer');
+            else document.getElementById('layerFgBtn').classList.add('active-layer');
+            compositeAndDraw();
+            updateStatusCoordsPaint(0,0);
+        }
+        
+        function toggleFgVisibilityPaint() {
+            fgVisible = !fgVisible;
+            document.getElementById('toggleFgVis').innerText = fgVisible ? 'Hide FG' : 'Show FG';
+            compositeAndDraw();
+        }
+        
+        function openPaint() {
+            paintAppDiv.classList.add('active');
+            initPalettePaint();
+            attachPaintEvents();
+            setToolPaint('pencil');
+            setBrushSizePaint(1);
+            setOpacityPaint(100);
+            setLayerPaint('bg');
+            fgVisible = true;
+            document.getElementById('toggleFgVis').innerText = 'Hide FG';
+            compositeAndDraw();
+        }
+        
+        function closePaintWindow() {
+            paintAppDiv.classList.remove('active');
+        }
+        
+        closePaintBtnPaint.addEventListener('click', closePaintWindow);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && paintAppDiv.classList.contains('active')) {
+                closePaintWindow();
+            }
+        });
+        
+        document.getElementById('tool-pencil').addEventListener('click', () => setToolPaint('pencil'));
+        document.getElementById('tool-line').addEventListener('click', () => setToolPaint('line'));
+        document.getElementById('tool-rect').addEventListener('click', () => setToolPaint('rect'));
+        document.getElementById('tool-fill').addEventListener('click', () => setToolPaint('fill'));
+        document.getElementById('tool-eraser').addEventListener('click', () => setToolPaint('eraser'));
+        document.getElementById('tool-clear').addEventListener('click', () => { clearActiveLayer(); });
+        document.getElementById('sizeDown').addEventListener('click', () => setBrushSizePaint(brushSize - 2));
+        document.getElementById('sizeUp').addEventListener('click', () => setBrushSizePaint(brushSize + 2));
+        document.getElementById('opacitySlider').addEventListener('input', (e) => setOpacityPaint(parseInt(e.target.value)));
+        document.getElementById('layerBgBtn').addEventListener('click', () => setLayerPaint('bg'));
+        document.getElementById('layerFgBtn').addEventListener('click', () => setLayerPaint('fg'));
+        document.getElementById('toggleFgVis').addEventListener('click', toggleFgVisibilityPaint);
+        
         // ================== USER COMMANDS ==================
         async function userCreateFile(filename) {
             if (!filename) {
@@ -1069,6 +1947,10 @@
                             displaySystemFile(target);
                             return;
                         }
+                        if (target === 'paint.exe') {
+                            openPaint();
+                            return;
+                        }
                         await loadGistFiles();
                         if (gistFiles[target] !== undefined) {
                             if (target.endsWith('.md')) {
@@ -1084,12 +1966,36 @@
                     }
                 }
             }
+            else if (command === 'paint.exe') {
+                openPaint();
+            }
+            else if (command === 'register') {
+                if (parts.length < 3) {
+                    addHistoryLine('Usage: register <password> <nick>');
+                } else {
+                    await registerUser(parts[1], parts[2]);
+                }
+            }
+            else if (command === 'login') {
+                if (parts.length < 3) {
+                    addHistoryLine('Usage: login <password> <nick>');
+                } else {
+                    await loginUser(parts[1], parts[2]);
+                }
+            }
+            else if (command === 'chat.exe') {
+                openChat();
+            }
             else if (command === 'help') {
                 addHistoryLine('Available commands:');
                 addHistoryLine('  DIR                     - list system + cloud files');
-                addHistoryLine('  DIR <ID|filename>       - view file (Markdown opens in separate window)');
+                addHistoryLine('  DIR <ID|filename>       - view file (Markdown opens viewer)');
                 addHistoryLine('  DIR NEW [filename.md]   - create new Markdown file');
                 addHistoryLine('  DIR EDIT <filename.md>  - edit Markdown file');
+                addHistoryLine('  PAINT.EXE               - open retro paint (layers, opacity)');
+                addHistoryLine('  REGISTER <pass> <nick>  - create account');
+                addHistoryLine('  LOGIN <pass> <nick>     - login to chat');
+                addHistoryLine('  CHAT.EXE                - open multiplayer chat');
                 addHistoryLine('  CLS                     - clear screen');
                 addHistoryLine('  VER                     - show version');
                 addHistoryLine('  HELP                    - this help');
